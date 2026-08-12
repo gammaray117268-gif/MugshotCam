@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPMPS MugshotCam - Duty Officer Login</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-container">
+      <div class="login-header">
+        <div class="login-logos">
+          <img src="1.png" alt="PNP Logo" class="logo-pnp" onerror="this.style.display='none'">
+          <img src="2.png" alt="MPMPS Logo" class="logo-mps" onerror="this.style.display='none'">
+        </div>
+        <h2>Duty Officer Authentication</h2>
+        <p>Login or register to begin a capture session</p>
+      </div>
+      <div class="login-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="officerName">Full Name</label>
+            <input type="text" id="officerName" placeholder="e.g. Juan Dela Cruz" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="officerRank">Rank</label>
+            <select id="officerRank">
+              <option value="">Select Rank</option>
+              <option value="Patrolman/Patrolwoman">Patrolman/Patrolwoman</option>
+              <option value="Police Corporal">Police Corporal</option>
+              <option value="Police Sergeant">Police Sergeant</option>
+              <option value="Police Lieutenant">Police Lieutenant</option>
+              <option value="Police Captain">Police Captain</option>
+              <option value="Police Major">Police Major</option>
+              <option value="Police Lieutenant Colonel">Police Lieutenant Colonel</option>
+              <option value="Police Colonel">Police Colonel</option>
+              <option value="Police Brigadier General">Police Brigadier General</option>
+              <option value="Police Major General">Police Major General</option>
+              <option value="Police Lieutenant General">Police Lieutenant General</option>
+              <option value="Police General">Police General</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="officerBadge">Badge / PNP ID</label>
+          <input type="text" id="officerBadge" placeholder="e.g. PNP-12345" autocomplete="off">
+        </div>
+        <div class="form-actions">
+          <button id="btnLogin" class="btn btn-primary">Login</button>
+          <button id="btnRegister" class="btn btn-secondary">Register New Officer</button>
+        </div>
+        <div id="loginMessage" class="message"></div>
+      </div>
+      <div class="login-footer">
+        MPMPS MugshotCam System v1.0
+      </div>
+    </div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

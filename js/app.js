@@ -1,0 +1,646 @@
+/* ============================================
+   MPMPS MugshotCam System - Application Logic
+   ============================================ */
+
+(function() {
+  'use strict';
+
+  // ==========================================
+  // Application State
+  // ==========================================
+  const App = {
+    state: {
+      currentScreen: 'login',
+      officer: null,
+      detainee: null,
+      session: {
+        photos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
+        timestamp: null
+      },
+      currentAngleIndex: 0,
+      stream: null,
+      capturedThisAngle: false
+    },
+
+    angles: [
+      {
+        key: 'frontHalf',
+        label: 'Front View (Half-Body)',
+        guide: 'Face the camera directly. Keep head and shoulders within the guide box.',
+        cssClass: ''
+      },
+      {
+        key: 'leftSide',
+        label: 'Left Side View (Half-Body)',
+        guide: 'Turn 90 degrees to your left. Show left profile within the guide box.',
+        cssClass: ''
+      },
+      {
+        key: 'rightSide',
+        label: 'Right Side View (Half-Body)',
+        guide: 'Turn 90 degrees to your right. Show right profile within the guide box.',
+        cssClass: ''
+      },
+      {
+        key: 'fullBody',
+        label: 'Front View (Full-Body)',
+        guide: 'Stand straight facing the camera. Ensure full body fits within the guide box.',
+        cssClass: 'full-body'
+      }
+    ],
+
+    // ==========================================
+    // Initialization
+    // ==========================================
+    init: function() {
+      this.bindEvents();
+      this.checkSession();
+      this.setDefaultDate();
+    },
+
+    bindEvents: function() {
+      // Registration
+      document.getElementById('btnStartCapture').addEventListener('click', () => this.handleStartCapture());
+      document.getElementById('btnBackToLogin').addEventListener('click', () => window.location.href = 'login.html');
+
+      // Camera
+      document.getElementById('btnCapture').addEventListener('click', () => this.capturePhoto());
+      document.getElementById('btnRetake').addEventListener('click', () => this.retakePhoto());
+      document.getElementById('btnNextAngle').addEventListener('click', () => this.nextAngle());
+
+      // Review
+      document.getElementById('btnExportWord').addEventListener('click', () => this.exportToWord());
+      document.getElementById('btnPrint').addEventListener('click', () => this.printBookingSheet());
+      document.getElementById('btnNewSession').addEventListener('click', () => this.newSession());
+
+      // Header nav
+      const btnLogout = document.getElementById('btnHeaderLogout');
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          localStorage.removeItem('mpmps_current_officer');
+          window.location.href = 'login.html';
+        });
+      }
+
+      // Photo downloads
+      document.getElementById('reviewPhotoFront').parentElement.querySelector('.photo-download').addEventListener('click', () => this.downloadPhoto('frontHalf', 'Front_HalfBody'));
+      document.getElementById('reviewPhotoLeft').parentElement.querySelector('.photo-download').addEventListener('click', () => this.downloadPhoto('leftSide', 'Left_Side'));
+      document.getElementById('reviewPhotoRight').parentElement.querySelector('.photo-download').addEventListener('click', () => this.downloadPhoto('rightSide', 'Right_Side'));
+      document.getElementById('reviewPhotoFull').parentElement.querySelector('.photo-download').addEventListener('click', () => this.downloadPhoto('fullBody', 'FullBody'));
+
+      // Keyboard shortcut for capture
+      document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && this.state.currentScreen === 'camera' && !this.state.capturedThisAngle) {
+          e.preventDefault();
+          this.capturePhoto();
+        }
+      });
+    },
+
+    setDefaultDate: function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('detaineeArrestDate').value = today;
+    },
+
+    checkSession: function() {
+      const saved = localStorage.getItem('mpmps_current_officer');
+      if (!saved) {
+        window.location.href = 'login.html';
+        return;
+      }
+      try {
+        this.state.officer = JSON.parse(saved);
+        this.navigateTo('registration');
+      } catch (e) {
+        console.error('Failed to parse saved officer', e);
+        window.location.href = 'login.html';
+      }
+    },
+
+    // ==========================================
+    // Navigation
+    // ==========================================
+    navigateTo: function(screenName) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById('screen-' + screenName);
+      if (target) {
+        target.classList.add('active');
+        this.state.currentScreen = screenName;
+      }
+
+      if (screenName === 'camera') {
+        this.startCamera();
+      } else {
+        this.stopCamera();
+      }
+
+      if (screenName === 'review') {
+        this.populateReview();
+      }
+    },
+
+    // ==========================================
+    // Login / Register
+    // ==========================================
+    handleLogin: function() {
+      const name = document.getElementById('officerName').value.trim();
+      const rank = document.getElementById('officerRank').value;
+      const badge = document.getElementById('officerBadge').value.trim();
+
+      if (!name || !rank || !badge) {
+        this.showMessage('loginMessage', 'All fields are required.', 'error');
+        return;
+      }
+
+      const officers = JSON.parse(localStorage.getItem('mpmps_officers') || '[]');
+      const found = officers.find(o => o.badgeId === badge && o.officerName === name && o.rank === rank);
+
+      if (!found) {
+        this.showMessage('loginMessage', 'Officer not found. Please register first.', 'error');
+        return;
+      }
+
+      this.state.officer = found;
+      localStorage.setItem('mpmps_current_officer', JSON.stringify(found));
+      this.showMessage('loginMessage', 'Login successful. Proceed to registration.', 'success');
+      setTimeout(() => {
+        this.navigateTo('registration');
+        this.showMessage('loginMessage', '', '');
+      }, 800);
+    },
+
+    handleRegister: function() {
+      const name = document.getElementById('officerName').value.trim();
+      const rank = document.getElementById('officerRank').value;
+      const badge = document.getElementById('officerBadge').value.trim();
+
+      if (!name || !rank || !badge) {
+        this.showMessage('loginMessage', 'All fields are required.', 'error');
+        return;
+      }
+
+      const officers = JSON.parse(localStorage.getItem('mpmps_officers') || '[]');
+
+      if (officers.find(o => o.badgeId === badge)) {
+        this.showMessage('loginMessage', 'Badge ID already registered.', 'error');
+        return;
+      }
+
+      const newOfficer = { officerName: name, rank, badgeId: badge };
+      officers.push(newOfficer);
+      localStorage.setItem('mpmps_officers', JSON.stringify(officers));
+
+      this.state.officer = newOfficer;
+      localStorage.setItem('mpmps_current_officer', JSON.stringify(newOfficer));
+      this.showMessage('loginMessage', 'Registration successful. Proceed to registration.', 'success');
+      setTimeout(() => {
+        this.navigateTo('registration');
+        this.showMessage('loginMessage', '', '');
+      }, 800);
+    },
+
+    // ==========================================
+    // Registration
+    // ==========================================
+    handleStartCapture: function() {
+      const fullName = document.getElementById('detaineeName').value.trim();
+      const offense = document.getElementById('detaineeOffense').value.trim();
+      const arrestDate = document.getElementById('detaineeArrestDate').value;
+
+      if (!fullName || !offense || !arrestDate) {
+        this.showMessage('registrationMessage', 'All fields are required.', 'error');
+        return;
+      }
+
+      const bookingId = 'BK-' + Date.now().toString(36).toUpperCase();
+
+      this.state.detainee = {
+        fullName,
+        offense,
+        dateOfArrest: arrestDate,
+        bookingId
+      };
+
+      this.state.session = {
+        photos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      this.state.currentAngleIndex = 0;
+      this.state.capturedThisAngle = false;
+
+      document.getElementById('bookingId').value = bookingId;
+      this.showMessage('registrationMessage', '', '');
+      this.navigateTo('camera');
+    },
+
+    // ==========================================
+    // Camera Management
+    // ==========================================
+    startCamera: async function() {
+      const video = document.getElementById('webcamVideo');
+      const placeholder = document.getElementById('capturePlaceholder');
+      const btnCapture = document.getElementById('btnCapture');
+
+      try {
+        this.state.stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          audio: false
+        });
+        video.srcObject = this.state.stream;
+        placeholder.style.display = 'none';
+        document.getElementById('cropOverlay').classList.add('active');
+        btnCapture.disabled = false;
+        this.updateCaptureUI();
+      } catch (err) {
+        console.error('Camera access error:', err);
+        placeholder.querySelector('p').textContent = 'Camera access denied. Please allow camera permissions.';
+        btnCapture.disabled = true;
+      }
+    },
+
+    stopCamera: function() {
+      if (this.state.stream) {
+        this.state.stream.getTracks().forEach(track => track.stop());
+        this.state.stream = null;
+      }
+      const video = document.getElementById('webcamVideo');
+      if (video) video.srcObject = null;
+    },
+
+    // ==========================================
+    // Capture Workflow
+    // ==========================================
+    updateCaptureUI: function() {
+      const angle = this.angles[this.state.currentAngleIndex];
+      const progress = ((this.state.currentAngleIndex) / this.angles.length) * 100;
+
+      document.getElementById('captureStepLabel').textContent =
+        `Step ${this.state.currentAngleIndex + 1} of 4: ${angle.label}`;
+      document.getElementById('progressFill').style.width = progress + '%';
+      document.getElementById('progressText').textContent = `${this.state.currentAngleIndex} of 4 captured`;
+      document.getElementById('captureGuideText').innerHTML = `<strong>Guide:</strong> ${angle.guide}`;
+
+      const cropBox = document.querySelector('.crop-box');
+      if (angle.cssClass === 'full-body') {
+        cropBox.classList.add('full-body');
+      } else {
+        cropBox.classList.remove('full-body');
+      }
+
+      document.getElementById('btnCapture').style.display = this.state.capturedThisAngle ? 'none' : 'inline-flex';
+      document.getElementById('btnRetake').style.display = this.state.capturedThisAngle ? 'inline-flex' : 'none';
+      document.getElementById('btnNextAngle').style.display = this.state.capturedThisAngle ? 'inline-flex' : 'none';
+    },
+
+    capturePhoto: function() {
+      const video = document.getElementById('webcamVideo');
+      const canvas = document.getElementById('captureCanvas');
+      const ctx = canvas.getContext('2d');
+
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        this.showMessage('loginMessage', 'Video not ready.', 'error');
+        return;
+      }
+
+      const angle = this.angles[this.state.currentAngleIndex];
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+
+      canvas.width = 600;
+      canvas.height = 600;
+
+      let cropSize, cropX, cropY;
+
+      if (angle.key === 'fullBody') {
+        cropSize = Math.min(vw, vh * 0.9);
+        cropSize = Math.min(cropSize, vw);
+        cropX = (vw - cropSize) / 2;
+        cropY = (vh - cropSize) / 2 - (cropSize * 0.2);
+      } else {
+        cropSize = Math.min(vw, vh) * 0.85;
+        cropX = (vw - cropSize) / 2;
+        cropY = (vh - cropSize) / 2 - (cropSize * 0.12);
+      }
+
+      cropX = Math.max(0, Math.min(cropX, vw - cropSize));
+      cropY = Math.max(0, Math.min(cropY, vh - cropSize));
+
+      ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, 600, 600);
+      this.applyDigitalSlate(ctx, 600, 600);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      this.state.session.photos[angle.key] = dataUrl;
+      this.state.capturedThisAngle = true;
+
+      this.showThumbnail(angle.key, dataUrl);
+      this.updateCaptureUI();
+    },
+
+    retakePhoto: function() {
+      const angle = this.angles[this.state.currentAngleIndex];
+      this.state.session.photos[angle.key] = null;
+      this.state.capturedThisAngle = false;
+
+      const thumb = document.getElementById('thumb-' + angle.key);
+      if (thumb) thumb.remove();
+
+      this.updateCaptureUI();
+    },
+
+    nextAngle: function() {
+      if (this.state.currentAngleIndex < this.angles.length - 1) {
+        this.state.currentAngleIndex++;
+        this.state.capturedThisAngle = false;
+        this.updateCaptureUI();
+      } else {
+        this.finishCapture();
+      }
+    },
+
+    finishCapture: function() {
+      const progress = 100;
+      document.getElementById('progressFill').style.width = progress + '%';
+      document.getElementById('progressText').textContent = '4 of 4 captured';
+
+      this.state.session.timestamp = new Date().toISOString();
+      this.saveSession();
+      this.stopCamera();
+      this.navigateTo('review');
+    },
+
+    // ==========================================
+    // Digital Slate
+    // ==========================================
+    applyDigitalSlate: function(ctx, width, height) {
+      const slateHeight = height * 0.28;
+      const slateY = height - slateHeight;
+
+      ctx.fillStyle = 'rgba(0, 30, 80, 0.78)';
+      ctx.fillRect(0, slateY, width, slateHeight);
+
+      const borderY = slateY + 2;
+      ctx.strokeStyle = 'rgba(244, 208, 63, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, borderY);
+      ctx.lineTo(width, borderY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('MOISES PADILLA MPS', width / 2, slateY + 28);
+
+      ctx.font = '12px Arial, sans-serif';
+      ctx.textAlign = 'left';
+      const lines = [
+        `Detainee: ${this.state.detainee.fullName}`,
+        `Offense: ${this.state.detainee.offense}`,
+        `Arrest Date: ${this.state.detainee.dateOfArrest}`,
+        `Officer: ${this.state.officer.officerName} (${this.state.officer.rank})`
+      ];
+
+      lines.forEach((line, i) => {
+        ctx.fillText(line, 18, slateY + 52 + (i * 16));
+      });
+
+      ctx.textAlign = 'right';
+      ctx.font = '10px Arial, sans-serif';
+      ctx.fillText(`Badge: ${this.state.officer.badgeId}`, width - 18, slateY + 52);
+      ctx.fillText(`Booking: ${this.state.detainee.bookingId}`, width - 18, slateY + 70);
+      ctx.fillText(new Date().toLocaleString(), width - 18, slateY + 88);
+    },
+
+    // ==========================================
+    // Thumbnails
+    // ==========================================
+    showThumbnail: function(key, dataUrl) {
+      const container = document.getElementById('captureThumbnails');
+      const existing = document.getElementById('thumb-' + key);
+      if (existing) existing.remove();
+
+      const img = document.createElement('img');
+      img.id = 'thumb-' + key;
+      img.src = dataUrl;
+      img.className = 'thumbnail';
+      img.alt = this.angles.find(a => a.key === key).label;
+      container.appendChild(img);
+    },
+
+    // ==========================================
+    // Review Screen
+    // ==========================================
+    populateReview: function() {
+      if (!this.state.detainee || !this.state.officer) return;
+
+      document.getElementById('reviewBookingId').textContent = this.state.detainee.bookingId;
+      document.getElementById('reviewDetaineeName').textContent = this.state.detainee.fullName;
+      document.getElementById('reviewOffense').textContent = this.state.detainee.offense;
+      document.getElementById('reviewArrestDate').textContent = this.state.detainee.dateOfArrest;
+      document.getElementById('reviewOfficerName').textContent = this.state.officer.officerName;
+      document.getElementById('reviewOfficerBadge').textContent = `${this.state.officer.rank} | ${this.state.officer.badgeId}`;
+
+      const setReviewPhoto = (key, imgId) => {
+        const img = document.getElementById(imgId);
+        if (img && this.state.session.photos[key]) {
+          img.src = this.state.session.photos[key];
+        }
+      };
+
+      setReviewPhoto('frontHalf', 'reviewPhotoFront');
+      setReviewPhoto('leftSide', 'reviewPhotoLeft');
+      setReviewPhoto('rightSide', 'reviewPhotoRight');
+      setReviewPhoto('fullBody', 'reviewPhotoFull');
+    },
+
+    // ==========================================
+    // Storage
+    // ==========================================
+    saveSession: function() {
+      const history = JSON.parse(localStorage.getItem('mpmps_history') || '[]');
+      history.push({
+        detainee: this.state.detainee,
+        officer: {
+          officerName: this.state.officer.officerName,
+          rank: this.state.officer.rank,
+          badgeId: this.state.officer.badgeId
+        },
+        session: this.state.session,
+        savedAt: new Date().toISOString()
+      });
+      localStorage.setItem('mpmps_history', JSON.stringify(history));
+    },
+
+    // ==========================================
+    // MS Word Export
+    // ==========================================
+    exportToWord: function() {
+      if (typeof htmlDocx === 'undefined') {
+        this.showMessage('exportMessage', 'Word export library not loaded. Please check your internet connection or use Print instead.', 'error');
+        return;
+      }
+
+      const template = document.getElementById('wordExportTemplate');
+
+      // Populate text fields
+      const populate = (id, value) => {
+        const el = template.querySelector('#' + id);
+        if (el) el.textContent = value || '';
+      };
+
+      populate('wordBookingId', this.state.detainee.bookingId);
+      populate('wordDate', new Date().toLocaleDateString());
+      populate('wordDetaineeName', this.state.detainee.fullName);
+      populate('wordArrestDate', this.state.detainee.dateOfArrest);
+      populate('wordOffense', this.state.detainee.offense);
+      populate('wordOfficerName', this.state.officer.officerName);
+      populate('wordOfficerRank', this.state.officer.rank);
+      populate('wordOfficerBadge', this.state.officer.badgeId);
+      populate('wordSlateText',
+        `Station: MOISES PADILLA MPS | Detainee: ${this.state.detainee.fullName} | ` +
+        `Offense: ${this.state.detainee.offense} | Date: ${this.state.detainee.dateOfArrest} | ` +
+        `Officer: ${this.state.officer.officerName} (${this.state.officer.rank}) | Badge: ${this.state.officer.badgeId}`
+      );
+
+      // Set images
+      const setImg = (id, src) => {
+        const el = template.querySelector('#' + id);
+        if (el) el.src = src;
+      };
+
+      setImg('wordPhotoFront', this.state.session.photos.frontHalf);
+      setImg('wordPhotoLeft', this.state.session.photos.leftSide);
+      setImg('wordPhotoRight', this.state.session.photos.rightSide);
+      setImg('wordPhotoFull', this.state.session.photos.fullBody);
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Mugshot Record - ${this.state.detainee.bookingId}</title>
+          <style>
+            body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 0; }
+            table { border-collapse: collapse; width: 100%; }
+            td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
+            .word-label { font-weight: bold; background: #f2f2f2; }
+            .word-photo-grid { margin: 18px 0; }
+            .word-photo-cell { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; }
+            .word-photo-cell-wide { width: 100%; }
+            .word-photo-cell img { width: 120px; height: 120px; object-fit: cover; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .word-photo-caption { font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+            .word-slate { border: 1px solid #000; padding: 10px; margin: 14px 0; background: #f9f9f9; font-size: 10pt; }
+            .word-signatures { margin-top: 40px; }
+            .sig-block { text-align: center; width: 33.33%; }
+            .sig-line { border-bottom: 1px solid #000; height: 50px; margin-bottom: 6px; }
+            .word-header { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 14px; }
+            .word-title { text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin: 14px 0; text-transform: uppercase; }
+            img { max-width: 100%; }
+          </style>
+        </head>
+        <body>
+          ${template.innerHTML}
+        </body>
+        </html>
+      `;
+
+      try {
+        const converted = htmlDocx.asBlob(htmlContent);
+        const url = URL.createObjectURL(converted);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MPMPS_Mugshot_${this.state.detainee.bookingId}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.showMessage('exportMessage', 'Word document exported successfully.', 'success');
+      } catch (e) {
+        console.error('Word export failed:', e);
+        this.showMessage('exportMessage', 'Failed to generate Word document. Please use the Print option instead.', 'error');
+      }
+    },
+
+    // ==========================================
+    // Print
+    // ==========================================
+    printBookingSheet: function() {
+      this.populateReview();
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    },
+
+    // ==========================================
+    // New Session
+    // ==========================================
+    newSession: function() {
+      this.stopCamera();
+      this.state.detainee = null;
+      this.state.session = {
+        photos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
+        timestamp: null
+      };
+      this.state.currentAngleIndex = 0;
+      this.state.capturedThisAngle = false;
+
+      document.getElementById('captureThumbnails').innerHTML = '';
+      document.getElementById('btnNextAngle').style.display = 'none';
+      document.getElementById('btnRetake').style.display = 'none';
+      document.getElementById('btnCapture').style.display = 'inline-flex';
+
+      localStorage.removeItem('mpmps_current_officer');
+      window.location.href = 'login.html';
+    },
+
+    // ==========================================
+    // Photo Downloads
+    // ==========================================
+    downloadPhoto: function(key, filenameSuffix) {
+      const dataUrl = this.state.session.photos[key];
+      if (!dataUrl) return;
+
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `MPMPS_${this.state.detainee.bookingId}_${filenameSuffix}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+
+    // ==========================================
+    // Utilities
+    // ==========================================
+    showMessage: function(elementId, text, type) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      el.textContent = text;
+      el.className = 'message ' + type;
+      if (!text) el.className = 'message';
+    }
+  };
+
+  // Initialize on DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => App.init());
+  } else {
+    App.init();
+  }
+
+})();

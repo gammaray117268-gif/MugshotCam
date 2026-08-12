@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPMPS Mugshot Capture System</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <header class="global-header">
+    <div class="header-inner">
+      <a href="index.html" class="header-brand">
+        <div class="header-logos">
+          <img src="1.png" alt="PNP Logo" class="logo-pnp" onerror="this.style.display='none'">
+          <img src="2.png" alt="MPMPS Logo" class="logo-mps" onerror="this.style.display='none'">
+        </div>
+        <div class="header-title-group">
+          <h1>MPMPS MugshotCam</h1>
+          <p>Moises Padilla Municipal Police Station</p>
+        </div>
+      </a>
+      <div class="header-actions">
+        <a href="report.html" class="btn-header btn-header-secondary">Records</a>
+        <button id="btnHeaderLogout" class="btn-header btn-header-logout">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <main class="main-content">
+      <!-- SCREEN 1: DETAINEE REGISTRATION -->
+      <section id="screen-registration" class="screen active">
+        <div class="card">
+          <div class="card-header">
+            <h2>Detainee Registration</h2>
+            <p>Enter case details before unlocking the camera</p>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="detaineeName">Detainee Full Name</label>
+              <input type="text" id="detaineeName" placeholder="e.g. Maria Santos" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label for="detaineeOffense">Offense / Violation</label>
+              <input type="text" id="detaineeOffense" placeholder="e.g. Theft, Illegal Possession, etc.">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="detaineeArrestDate">Date of Arrest</label>
+                <input type="date" id="detaineeArrestDate">
+              </div>
+              <div class="form-group">
+                <label for="bookingId">Booking ID</label>
+                <input type="text" id="bookingId" readonly>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button id="btnStartCapture" class="btn btn-primary">Start Capture Session</button>
+              <button id="btnBackToLogin" class="btn btn-ghost">Back to Login</button>
+            </div>
+            <div id="registrationMessage" class="message"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: CAMERA CAPTURE WIZARD -->
+      <section id="screen-camera" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <h2>Guided Photography</h2>
+            <p id="captureStepLabel">Step 1 of 4: Front View (Half-Body)</p>
+          </div>
+          <div class="card-body camera-body">
+            <div class="camera-container">
+              <video id="webcamVideo" autoplay playsinline muted></video>
+              <canvas id="captureCanvas" style="display:none;"></canvas>
+              <div id="cropOverlay" class="crop-overlay">
+                <div class="crop-box"></div>
+              </div>
+              <div id="capturePlaceholder" class="capture-placeholder">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <p>Initializing camera...</p>
+              </div>
+            </div>
+            <div class="camera-controls">
+              <div class="capture-progress">
+                <div class="progress-bar">
+                  <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <span id="progressText">0 of 4 captured</span>
+              </div>
+              <div class="camera-actions">
+                <button id="btnCapture" class="btn btn-primary btn-lg" disabled>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                  </svg>
+                  Capture
+                </button>
+                <button id="btnRetake" class="btn btn-secondary" style="display:none;">Retake</button>
+                <button id="btnNextAngle" class="btn btn-primary" style="display:none;">Next Angle</button>
+              </div>
+              <div class="capture-guide">
+                <p id="captureGuideText">Position the detainee within the guide box.</p>
+              </div>
+            </div>
+            <div id="captureThumbnails" class="capture-thumbnails"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 3: REVIEW & EXPORT -->
+      <section id="screen-review" class="screen">
+        <div class="card">
+          <div class="card-header">
+            <h2>Review & Export</h2>
+            <p>Verify captures and generate output documents</p>
+          </div>
+          <div class="card-body review-body">
+            <div class="detainee-summary">
+              <h3>Booking Summary</h3>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <span class="summary-label">Booking ID</span>
+                  <span id="reviewBookingId" class="summary-value"></span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">Detainee</span>
+                  <span id="reviewDetaineeName" class="summary-value"></span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">Offense</span>
+                  <span id="reviewOffense" class="summary-value"></span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">Date of Arrest</span>
+                  <span id="reviewArrestDate" class="summary-value"></span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">Officer</span>
+                  <span id="reviewOfficerName" class="summary-value"></span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">Rank / Badge</span>
+                  <span id="reviewOfficerBadge" class="summary-value"></span>
+                </div>
+              </div>
+            </div>
+            <div class="review-photos">
+              <h3>Captured Mugshots (2×2 inch)</h3>
+              <div class="photo-grid-2x2">
+                <div class="photo-item">
+                  <div class="photo-wrapper">
+                    <img id="reviewPhotoFront" alt="Front Half-Body">
+                    <button class="photo-download" data-key="frontHalf" title="Download JPEG">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="photo-label">Front Half-Body</span>
+                </div>
+                <div class="photo-item">
+                  <div class="photo-wrapper">
+                    <img id="reviewPhotoLeft" alt="Left Side Half-Body">
+                    <button class="photo-download" data-key="leftSide" title="Download JPEG">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="photo-label">Left Side Half-Body</span>
+                </div>
+                <div class="photo-item">
+                  <div class="photo-wrapper">
+                    <img id="reviewPhotoRight" alt="Right Side Half-Body">
+                    <button class="photo-download" data-key="rightSide" title="Download JPEG">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="photo-label">Right Side Half-Body</span>
+                </div>
+                <div class="photo-item">
+                  <div class="photo-wrapper">
+                    <img id="reviewPhotoFull" alt="Front Full-Body">
+                    <button class="photo-download" data-key="fullBody" title="Download JPEG">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <span class="photo-label">Front Full-Body</span>
+                </div>
+              </div>
+            </div>
+            <div class="export-actions">
+              <button id="btnExportWord" class="btn btn-primary btn-lg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Export to MS Word (.docx)
+              </button>
+              <button id="btnPrint" class="btn btn-secondary btn-lg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Print A4 Booking Sheet
+              </button>
+              <button id="btnNewSession" class="btn btn-ghost">New Session</button>
+            </div>
+            <div id="exportMessage" class="message"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p> MPMPS MugshotCam System — Moises Padilla Municipal Police Station</p>
+    </footer>
+  </div>
+
+  <!-- Hidden template for MS Word export -->
+  <div id="wordExportTemplate" style="display:none;">
+    <div class="word-doc">
+      <div class="word-header">
+        <p class="word-republic">Republic of the Philippines</p>
+        <p class="word-station">MOISES PADILLA MUNICIPAL POLICE STATION</p>
+        <p class="word-sub">Moises Padilla, Negros Occidental</p>
+      </div>
+      <div class="word-title">MUGSHOT RECORD</div>
+      <table class="word-table word-table-details">
+        <tr>
+          <td class="word-label">Booking ID:</td>
+          <td class="word-value" id="wordBookingId"></td>
+          <td class="word-label">Date:</td>
+          <td class="word-value" id="wordDate"></td>
+        </tr>
+        <tr>
+          <td class="word-label">Detainee Name:</td>
+          <td class="word-value" id="wordDetaineeName"></td>
+          <td class="word-label">Date of Arrest:</td>
+          <td class="word-value" id="wordArrestDate"></td>
+        </tr>
+        <tr>
+          <td class="word-label">Offense / Violation:</td>
+          <td class="word-value" colspan="3" id="wordOffense"></td>
+        </tr>
+      </table>
+      <table class="word-table word-table-officer">
+        <tr>
+          <td class="word-label">Officer on Duty:</td>
+          <td class="word-value" id="wordOfficerName"></td>
+          <td class="word-label">Rank:</td>
+          <td class="word-value" id="wordOfficerRank"></td>
+          <td class="word-label">Badge/PNP ID:</td>
+          <td class="word-value" id="wordOfficerBadge"></td>
+        </tr>
+      </table>
+      <div class="word-photo-section">
+        <table class="word-photo-grid">
+          <tr>
+            <td class="word-photo-cell">
+              <img id="wordPhotoFront" alt="Front Half-Body">
+              <div class="word-photo-caption">FRONT VIEW (Half-Body)</div>
+            </td>
+            <td class="word-photo-cell">
+              <img id="wordPhotoLeft" alt="Left Side Half-Body">
+              <div class="word-photo-caption">LEFT SIDE VIEW (Half-Body)</div>
+            </td>
+            <td class="word-photo-cell">
+              <img id="wordPhotoRight" alt="Right Side Half-Body">
+              <div class="word-photo-caption">RIGHT SIDE VIEW (Half-Body)</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="word-photo-cell word-photo-cell-wide" colspan="3">
+              <img id="wordPhotoFull" alt="Front Full-Body">
+              <div class="word-photo-caption">FRONT VIEW (Full-Body)</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="word-slate">
+        <p><strong>Digital Slate Data:</strong></p>
+        <p id="wordSlateText"></p>
+      </div>
+      <table class="word-signatures">
+        <tr>
+          <td class="sig-block">
+            <div class="sig-line"></div>
+            <p>Detainee Signature</p>
+            <p class="sig-date">Date: _______________</p>
+          </td>
+          <td class="sig-block">
+            <div class="sig-line"></div>
+            <p>Investigating Officer</p>
+            <p class="sig-date">Date: _______________</p>
+          </td>
+          <td class="sig-block">
+            <div class="sig-line"></div>
+            <p>Station Commander</p>
+            <p class="sig-date">Date: _______________</p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

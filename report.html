@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MPMPS MugshotCam - Detention Records</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <header class="global-header">
+    <div class="header-inner">
+      <a href="index.html" class="header-brand">
+        <div class="header-logos">
+          <img src="1.png" alt="PNP Logo" class="logo-pnp" onerror="this.style.display='none'">
+          <img src="2.png" alt="MPMPS Logo" class="logo-mps" onerror="this.style.display='none'">
+        </div>
+        <div class="header-title-group">
+          <h1>MPMPS MugshotCam</h1>
+          <p>Moises Padilla Municipal Police Station</p>
+        </div>
+      </a>
+      <div class="header-actions">
+        <a href="index.html" class="btn-header btn-header-secondary">New Capture</a>
+        <button id="btnReportLogout" class="btn-header btn-header-logout">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="report-container">
+    <div class="report-toolbar">
+      <h2>Detention Records</h2>
+      <div class="report-toolbar-actions">
+        <button id="btnRefresh" class="btn btn-primary">Refresh</button>
+      </div>
+    </div>
+
+    <div class="records-table-wrap">
+      <div style="overflow-x:auto;">
+        <table class="records-table">
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Detainee</th>
+              <th>Offense</th>
+              <th>Arrest Date</th>
+              <th>Officer</th>
+              <th>Mugshot</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody">
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  <p>No records found.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Detail Modal -->
+  <div id="viewModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Booking Record Details</h3>
+        <button class="modal-close" onclick="ReportApp.closeModal('viewModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="viewModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="ReportApp.closeModal('viewModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Edit Detainee Record</h3>
+        <button class="modal-close" onclick="ReportApp.closeModal('editModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editBookingId">
+        <div class="form-group">
+          <label for="editDetaineeName">Detainee Full Name</label>
+          <input type="text" id="editDetaineeName">
+        </div>
+        <div class="form-group">
+          <label for="editOffense">Offense / Violation</label>
+          <input type="text" id="editOffense">
+        </div>
+        <div class="form-group">
+          <label for="editArrestDate">Date of Arrest</label>
+          <input type="date" id="editArrestDate">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ReportApp.closeModal('editModal')">Cancel</button>
+        <button class="btn btn-primary" id="btnSaveEdit">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-header">
+        <h3>Confirm Deletion</h3>
+        <button class="modal-close" onclick="ReportApp.closeModal('deleteModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this record? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ReportApp.closeModal('deleteModal')">Cancel</button>
+        <button class="btn btn-primary" id="btnConfirmDelete" style="background:#c0392b;">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/report.js"></script>
+</body>
+</html>
