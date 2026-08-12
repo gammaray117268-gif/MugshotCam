@@ -284,12 +284,22 @@ body {
   color: #fff;
   padding: 18px 24px;
   border-bottom: 3px solid var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .card-header h2 {
   font-size: 1.15rem;
   font-weight: 600;
-  margin: 0 0 3px;
+  margin: 0;
 }
 
 .card-header p {
@@ -438,6 +448,34 @@ body {
   border: 1px solid #c3e6cb;
 }
 
+/* Camera Mode Switch Button */
+.btn-camera-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
+.btn-camera-switch:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.btn-camera-switch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* ============================================
    CAMERA SCREEN
    ============================================ */
@@ -465,6 +503,10 @@ body {
   height: 100%;
   object-fit: cover;
   transform: scaleX(-1);
+}
+
+.camera-container video.back-camera {
+  transform: scaleX(1);
 }
 
 .capture-placeholder {

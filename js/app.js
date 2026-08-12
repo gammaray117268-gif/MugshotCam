@@ -24,7 +24,8 @@
       },
       currentAngleIndex: 0,
       stream: null,
-      capturedThisAngle: false
+      capturedThisAngle: false,
+      facingMode: 'user'
     },
 
     angles: [
@@ -72,6 +73,7 @@
       document.getElementById('btnCapture').addEventListener('click', () => this.capturePhoto());
       document.getElementById('btnRetake').addEventListener('click', () => this.retakePhoto());
       document.getElementById('btnNextAngle').addEventListener('click', () => this.nextAngle());
+      document.getElementById('btnSwitchCamera').addEventListener('click', () => this.switchCameraMode());
 
       // Review
       document.getElementById('btnExportWord').addEventListener('click', () => this.exportToWord());
@@ -254,7 +256,7 @@
 
       try {
         this.state.stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: this.state.facingMode },
           audio: false
         });
         video.srcObject = this.state.stream;
@@ -276,6 +278,24 @@
       }
       const video = document.getElementById('webcamVideo');
       if (video) video.srcObject = null;
+    },
+
+    switchCameraMode: function() {
+      this.state.facingMode = this.state.facingMode === 'user' ? 'environment' : 'user';
+      const label = document.getElementById('cameraModeLabel');
+      const video = document.getElementById('webcamVideo');
+      if (label) {
+        label.textContent = this.state.facingMode === 'user' ? 'Front' : 'Back';
+      }
+      if (video) {
+        if (this.state.facingMode === 'environment') {
+          video.classList.add('back-camera');
+        } else {
+          video.classList.remove('back-camera');
+        }
+      }
+      this.stopCamera();
+      this.startCamera();
     },
 
     // ==========================================

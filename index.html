@@ -67,8 +67,19 @@
       <section id="screen-camera" class="screen">
         <div class="card">
           <div class="card-header">
-            <h2>Guided Photography</h2>
-            <p id="captureStepLabel">Step 1 of 4: Front View (Half-Body)</p>
+            <div class="card-header-left">
+              <h2>Guided Photography</h2>
+              <p id="captureStepLabel">Step 1 of 4: Front View (Half-Body)</p>
+            </div>
+            <button id="btnSwitchCamera" class="btn-camera-switch" title="Switch Camera">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 7h-9"/>
+                <path d="M14 17H5"/>
+                <circle cx="17" cy="7" r="3"/>
+                <circle cx="7" cy="17" r="3"/>
+              </svg>
+              <span id="cameraModeLabel">Front</span>
+            </button>
           </div>
           <div class="card-body camera-body">
             <div class="camera-container">
