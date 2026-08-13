@@ -4,6 +4,7 @@
   const ReportApp = {
     records: [],
     deleteTargetIndex: null,
+    currentViewIndex: null,
 
     init: function() {
       if (!localStorage.getItem('mpmps_current_officer')) {
@@ -26,6 +27,10 @@
           window.location.href = 'login.html';
         });
       }
+
+      document.getElementById('btnPrintRecord').addEventListener('click', () => this.printRecord(this.currentViewIndex));
+      document.getElementById('btnExportWordRecord').addEventListener('click', () => this.exportRecordToWord(this.currentViewIndex));
+      document.getElementById('btnShareRecord').addEventListener('click', () => this.shareRecord(this.currentViewIndex));
 
       // Close modal on overlay click
       document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -102,6 +107,7 @@
     },
 
     viewRecord: function(index) {
+      this.currentViewIndex = index;
       const rec = this.records[index];
       if (!rec || !rec.detainee) return;
 
@@ -226,6 +232,428 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    },
+
+    base64ToBlob: function(base64, contentType) {
+      contentType = contentType || 'image/jpeg';
+      const sliceSize = 1024;
+      const byteCharacters = atob(base64);
+      const bytesLength = byteCharacters.length;
+      const slicesCount = Math.ceil(bytesLength / sliceSize);
+      const byteArrays = new Array(slicesCount);
+
+      for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+        const begin = sliceIndex * sliceSize;
+        const end = Math.min(begin + sliceSize, bytesLength);
+        const bytes = new Array(end - begin);
+        for (let i = begin; i < end; ++i) {
+          bytes[i - begin] = byteCharacters.charCodeAt(i);
+        }
+        byteArrays[sliceIndex] = new Uint8Array(bytes);
+      }
+
+      return new Blob(byteArrays, { type: contentType });
+    },
+
+    printRecord: function(index) {
+      const rec = this.records[index];
+      if (!rec || !rec.detainee) return;
+
+      const photos = rec.session ? rec.session.photos : {};
+      const officer = rec.officer || {};
+      const detainee = rec.detainee;
+
+      const photoKeys = [
+        { key: 'frontHalf', label: 'Front Half-Body' },
+        { key: 'leftSide', label: 'Left Side Half-Body' },
+        { key: 'rightSide', label: 'Right Side Half-Body' },
+        { key: 'fullBody', label: 'Front Full-Body' }
+      ];
+
+      const photosHtml = photoKeys.map(p => {
+        const src = photos[p.key] || '';
+        return `
+          <div class="print-photo">
+            ${src ? `<img src="${src}" alt="${p.label}">` : '<div class="print-photo-placeholder">No Image</div>'}
+            <div class="print-photo-caption">${p.label}</div>
+          </div>
+        `;
+      }).join('');
+
+      const printContent = `
+        <div class="print-record">
+          <div class="print-header">
+            <h1>MUGSHOT RECORD</h1>
+            <p>Republic of the Philippines</p>
+            <p>MOISES PADILLA MUNICIPAL POLICE STATION</p>
+            <p>Moises Padilla, Negros Occidental</p>
+          </div>
+          <table class="print-table">
+            <tr>
+              <td class="print-label">Booking ID:</td>
+              <td class="print-value">${this.escapeHtml(detainee.bookingId || '')}</td>
+              <td class="print-label">Date:</td>
+              <td class="print-value">${new Date().toLocaleDateString()}</td>
+            </tr>
+            <tr>
+              <td class="print-label">Detainee Name:</td>
+              <td class="print-value">${this.escapeHtml(detainee.fullName || '')}</td>
+              <td class="print-label">Date of Arrest:</td>
+              <td class="print-value">${detainee.dateOfArrest ? new Date(detainee.dateOfArrest).toLocaleDateString() : ''}</td>
+            </tr>
+            <tr>
+              <td class="print-label">Offense / Violation:</td>
+              <td class="print-value" colspan="3">${this.escapeHtml(detainee.offense || '')}</td>
+            </tr>
+            <tr>
+              <td class="print-label">Officer on Duty:</td>
+              <td class="print-value">${this.escapeHtml(officer.officerName || '')}</td>
+              <td class="print-label">Rank:</td>
+              <td class="print-value">${this.escapeHtml(officer.rank || '')}</td>
+            </tr>
+            <tr>
+              <td class="print-label">Badge/PNP ID:</td>
+              <td class="print-value" colspan="3">${this.escapeHtml(officer.badgeId || '')}</td>
+            </tr>
+          </table>
+          <h2 class="print-section-title">MUGSHOTS</h2>
+          <div class="print-photos-grid">
+            ${photosHtml}
+          </div>
+          <div class="print-signatures">
+            <div class="print-sig-block">
+              <div class="print-sig-line"></div>
+              <p>Detainee Signature</p>
+              <p class="print-sig-date">Date: _______________</p>
+            </div>
+            <div class="print-sig-block">
+              <div class="print-sig-line"></div>
+              <p>Investigating Officer</p>
+              <p class="print-sig-date">Date: _______________</p>
+            </div>
+            <div class="print-sig-block">
+              <div class="print-sig-line"></div>
+              <p>Station Commander</p>
+              <p class="print-sig-date">Date: _______________</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (!printWindow) {
+        alert('Please allow popups to print this record.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Mugshot Record - ${this.escapeHtml(detainee.bookingId || '')}</title>
+          <style>
+            body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 20px; }
+            .print-header { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .print-header h1 { font-size: 18pt; margin: 0 0 5px; text-transform: uppercase; }
+            .print-header p { margin: 2px 0; }
+            .print-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .print-table td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
+            .print-label { font-weight: bold; background: #f2f2f2; width: 25%; }
+            .print-value { width: 25%; }
+            .print-section-title { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; }
+            .print-photos-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 30px; }
+            .print-photo { text-align: center; border: 1px solid #000; padding: 8px; width: 45%; min-width: 200px; }
+            .print-photo img { width: 100%; max-width: 250px; height: auto; aspect-ratio: 1/1; object-fit: cover; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .print-photo-placeholder { width: 100%; max-width: 250px; aspect-ratio: 1/1; background: #f5f5f5; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; margin: 0 auto 6px; color: #999; }
+            .print-photo-caption { font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+            .print-signatures { margin-top: 40px; display: flex; justify-content: space-between; }
+            .print-sig-block { text-align: center; width: 30%; }
+            .print-sig-line { border-bottom: 1px solid #000; height: 50px; margin-bottom: 6px; }
+            .print-sig-block p { margin: 2px 0; font-size: 10pt; }
+            .print-sig-date { font-size: 9pt; color: #333; }
+            @media print {
+              body { padding: 0; }
+              .print-photo { break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 300);
+    },
+
+    exportRecordToWord: function(index) {
+      const rec = this.records[index];
+      if (!rec || !rec.detainee) return;
+
+      if (typeof htmlDocx === 'undefined') {
+        alert('Word export library not loaded. Please check your internet connection.');
+        return;
+      }
+
+      const photos = rec.session ? rec.session.photos : {};
+      const officer = rec.officer || {};
+      const detainee = rec.detainee;
+
+      const setImg = (id, src) => {
+        const el = document.getElementById(id);
+        if (el) el.src = src;
+      };
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Mugshot Record - ${this.escapeHtml(detainee.bookingId || '')}</title>
+          <style>
+            body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; color: #000; margin: 0; padding: 0; }
+            table { border-collapse: collapse; width: 100%; }
+            td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
+            .word-label { font-weight: bold; background: #f2f2f2; }
+            .word-title { text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin: 14px 0; text-transform: uppercase; }
+            .word-header { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 14px; }
+            .word-slate { border: 1px solid #000; padding: 10px; margin: 14px 0; background: #f9f9f9; font-size: 10pt; }
+            .word-signatures { margin-top: 40px; }
+            .sig-block { text-align: center; width: 33.33%; }
+            .sig-line { border-bottom: 1px solid #000; height: 50px; margin-bottom: 6px; }
+            .page-break { page-break-after: always; }
+            .word-photo-grid-original { margin: 18px 0; }
+            .word-photo-cell-original { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top; }
+            .word-photo-cell-original img { max-width: 100%; height: auto; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .word-photo-grid-cropped { margin: 18px 0; }
+            .word-photo-cell-cropped { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top; }
+            .word-photo-cell-cropped img { width: 5.08cm; height: 5.08cm; object-fit: cover; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .word-photo-caption { font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+            .word-photo-cell-wide { width: 100%; }
+            img { max-width: 100%; }
+          </style>
+        </head>
+        <body>
+          <div class="word-header">
+            <p>Republic of the Philippines</p>
+            <p>MOISES PADILLA MUNICIPAL POLICE STATION</p>
+            <p>Moises Padilla, Negros Occidental</p>
+          </div>
+          <div class="word-title">MUGSHOT RECORD</div>
+          <table>
+            <tr>
+              <td class="word-label">Booking ID:</td>
+              <td>${this.escapeHtml(detainee.bookingId || '')}</td>
+              <td class="word-label">Date:</td>
+              <td>${new Date().toLocaleDateString()}</td>
+            </tr>
+            <tr>
+              <td class="word-label">Detainee Name:</td>
+              <td>${this.escapeHtml(detainee.fullName || '')}</td>
+              <td class="word-label">Date of Arrest:</td>
+              <td>${detainee.dateOfArrest ? new Date(detainee.dateOfArrest).toLocaleDateString() : ''}</td>
+            </tr>
+            <tr>
+              <td class="word-label">Offense / Violation:</td>
+              <td colspan="3">${this.escapeHtml(detainee.offense || '')}</td>
+            </tr>
+          </table>
+          <table>
+            <tr>
+              <td class="word-label">Officer on Duty:</td>
+              <td>${this.escapeHtml(officer.officerName || '')}</td>
+              <td class="word-label">Rank:</td>
+              <td>${this.escapeHtml(officer.rank || '')}</td>
+              <td class="word-label">Badge/PNP ID:</td>
+              <td>${this.escapeHtml(officer.badgeId || '')}</td>
+            </tr>
+          </table>
+          <div class="word-slate">
+            <p><strong>Digital Slate Data:</strong></p>
+            <p>Station: MOISES PADILLA MPS | Detainee: ${this.escapeHtml(detainee.fullName || '')} | Offense: ${this.escapeHtml(detainee.offense || '')} | Date: ${detainee.dateOfArrest ? new Date(detainee.dateOfArrest).toLocaleDateString() : ''} | Officer: ${this.escapeHtml(officer.officerName || '')} (${this.escapeHtml(officer.rank || '')}) | Badge: ${this.escapeHtml(officer.badgeId || '')}</p>
+          </div>
+          <table class="word-signatures">
+            <tr>
+              <td class="sig-block">
+                <div class="sig-line"></div>
+                <p>Detainee Signature</p>
+                <p class="sig-date">Date: _______________</p>
+              </td>
+              <td class="sig-block">
+                <div class="sig-line"></div>
+                <p>Investigating Officer</p>
+                <p class="sig-date">Date: _______________</p>
+              </td>
+              <td class="sig-block">
+                <div class="sig-line"></div>
+                <p>Station Commander</p>
+                <p class="sig-date">Date: _______________</p>
+              </td>
+            </tr>
+          </table>
+          <div class="page-break"></div>
+          <div class="word-title">ORIGINAL CAPTURED IMAGES</div>
+          <table class="word-photo-grid-original">
+            <tr>
+              <td class="word-photo-cell-original">
+                <img id="wordOriginalPhotoFront" alt="Front Half-Body">
+                <div class="word-photo-caption">FRONT VIEW (Half-Body)</div>
+              </td>
+              <td class="word-photo-cell-original">
+                <img id="wordOriginalPhotoLeft" alt="Left Side Half-Body">
+                <div class="word-photo-caption">LEFT SIDE VIEW (Half-Body)</div>
+              </td>
+              <td class="word-photo-cell-original">
+                <img id="wordOriginalPhotoRight" alt="Right Side Half-Body">
+                <div class="word-photo-caption">RIGHT SIDE VIEW (Half-Body)</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="word-photo-cell-original word-photo-cell-wide" colspan="3">
+                <img id="wordOriginalPhotoFull" alt="Front Full-Body">
+                <div class="word-photo-caption">FRONT VIEW (Full-Body)</div>
+              </td>
+            </tr>
+          </table>
+          <div class="page-break"></div>
+          <div class="word-title">CROPPED MUGSHOTS (2×2 inches / 5.08 cm)</div>
+          <table class="word-photo-grid-cropped">
+            <tr>
+              <td class="word-photo-cell-cropped">
+                <img id="wordPhotoFront" alt="Front Half-Body">
+                <div class="word-photo-caption">FRONT VIEW (Half-Body)</div>
+              </td>
+              <td class="word-photo-cell-cropped">
+                <img id="wordPhotoLeft" alt="Left Side Half-Body">
+                <div class="word-photo-caption">LEFT SIDE VIEW (Half-Body)</div>
+              </td>
+              <td class="word-photo-cell-cropped">
+                <img id="wordPhotoRight" alt="Right Side Half-Body">
+                <div class="word-photo-caption">RIGHT SIDE VIEW (Half-Body)</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="word-photo-cell-cropped word-photo-cell-wide" colspan="3">
+                <img id="wordPhotoFull" alt="Front Full-Body">
+                <div class="word-photo-caption">FRONT VIEW (Full-Body)</div>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlContent;
+      document.body.appendChild(tempDiv);
+
+      setImg('wordPhotoFront', photos.frontHalf);
+      setImg('wordPhotoLeft', photos.leftSide);
+      setImg('wordPhotoRight', photos.rightSide);
+      setImg('wordPhotoFull', photos.fullBody);
+
+      const originalPhotos = rec.session ? rec.session.originalPhotos : {};
+      setImg('wordOriginalPhotoFront', originalPhotos.frontHalf);
+      setImg('wordOriginalPhotoLeft', originalPhotos.leftSide);
+      setImg('wordOriginalPhotoRight', originalPhotos.rightSide);
+      setImg('wordOriginalPhotoFull', originalPhotos.fullBody);
+
+      try {
+        const converted = htmlDocx.asBlob(htmlContent);
+        const url = URL.createObjectURL(converted);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MPMPS_Mugshot_${detainee.bookingId || 'record'}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        console.error('Word export failed:', e);
+        alert('Failed to generate Word document. Please use Print instead.');
+      } finally {
+        document.body.removeChild(tempDiv);
+      }
+    },
+
+    shareRecord: async function(index) {
+      const rec = this.records[index];
+      if (!rec || !rec.detainee) return;
+
+      const photos = rec.session ? rec.session.photos : {};
+      const photoKeys = ['frontHalf', 'leftSide', 'rightSide', 'fullBody'];
+      const labels = {
+        frontHalf: 'Front_HalfBody',
+        leftSide: 'Left_Side',
+        rightSide: 'Right_Side',
+        fullBody: 'FullBody'
+      };
+
+      const files = [];
+      for (const key of photoKeys) {
+        const src = photos[key];
+        if (src) {
+          try {
+            const blob = this.base64ToBlob(src.replace(/^data:image\/\w+;base64,/, ''), 'image/jpeg');
+            blob.name = `MPMPS_${rec.detainee.bookingId || 'record'}_${labels[key]}.jpg`;
+            blob.lastModified = Date.now();
+            files.push(blob);
+          } catch (e) {
+            console.error('Failed to convert image:', key, e);
+          }
+        }
+      }
+
+      if (files.length === 0) {
+        alert('No images available to share for this record.');
+        return;
+      }
+
+      const shareData = {
+        title: `Mugshot Record - ${rec.detainee.bookingId || 'Record'}`,
+        text: `Mugshot record for ${rec.detainee.fullName || 'Unknown'} - ${rec.detainee.offense || 'No offense specified'}`,
+        files: files
+      };
+
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        try {
+          await navigator.share(shareData);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          console.error('Share failed:', err);
+        }
+      }
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: shareData.title,
+            text: shareData.text
+          });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          console.error('Share fallback failed:', err);
+        }
+      }
+
+      // Fallback: download images
+      for (const file of files) {
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      alert('Sharing is not supported on this browser. Images have been downloaded instead.');
     }
   };
 
