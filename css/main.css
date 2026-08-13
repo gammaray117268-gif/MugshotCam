@@ -614,6 +614,20 @@ body {
   justify-content: center;
 }
 
+.capture-flash {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.85);
+  z-index: 9999;
+  pointer-events: none;
+  animation: flashFade 0.4s ease-out forwards;
+}
+
+@keyframes flashFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 .capture-guide {
   text-align: center;
   color: var(--color-text-muted);

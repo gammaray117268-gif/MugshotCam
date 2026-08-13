@@ -417,9 +417,19 @@
         cropBox.classList.remove('full-body');
       }
 
-      document.getElementById('btnCapture').style.display = this.state.capturedThisAngle ? 'none' : 'inline-flex';
-      document.getElementById('btnRetake').style.display = this.state.capturedThisAngle ? 'inline-flex' : 'none';
-      document.getElementById('btnNextAngle').style.display = this.state.capturedThisAngle ? 'inline-flex' : 'none';
+      const btnCapture = document.getElementById('btnCapture');
+      const btnRetake = document.getElementById('btnRetake');
+      const btnNextAngle = document.getElementById('btnNextAngle');
+
+      if (this.state.capturedThisAngle) {
+        btnCapture.style.display = 'none';
+        btnRetake.style.display = 'inline-flex';
+        btnNextAngle.style.display = 'inline-flex';
+      } else {
+        btnCapture.style.display = 'inline-flex';
+        btnRetake.style.display = 'none';
+        btnNextAngle.style.display = 'none';
+      }
     },
 
     capturePhoto: function() {
@@ -428,22 +438,13 @@
       const ctx = canvas.getContext('2d');
       const statusEl = document.getElementById('cameraStatus');
 
-      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-        if (statusEl) {
-          statusEl.textContent = 'Video not ready. Please wait or retry.';
-          statusEl.style.color = 'var(--color-danger)';
-        }
-        console.warn('Video not ready.');
-        return;
-      }
-
       const angle = this.angles[this.state.currentAngleIndex];
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+      const vw = video.videoWidth || 0;
+      const vh = video.videoHeight || 0;
 
       if (!vw || !vh) {
         if (statusEl) {
-          statusEl.textContent = 'Video dimensions not available. Please retry.';
+          statusEl.textContent = 'Video not ready yet. Please wait a moment and try again.';
           statusEl.style.color = 'var(--color-danger)';
         }
         console.warn('Video dimensions not available.');
@@ -485,6 +486,12 @@
 
       this.showThumbnail(angle.key, dataUrl);
       this.updateCaptureUI();
+
+      // Flash animation
+      const flash = document.createElement('div');
+      flash.className = 'capture-flash';
+      document.body.appendChild(flash);
+      setTimeout(() => flash.remove(), 400);
     },
 
     retakePhoto: function() {
