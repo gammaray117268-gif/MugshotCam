@@ -266,10 +266,13 @@
           audio: false
         });
         video.srcObject = this.state.stream;
-        placeholder.style.display = 'none';
-        document.getElementById('cropOverlay').classList.add('active');
-        btnCapture.disabled = false;
-        this.updateCaptureUI();
+
+        video.onloadeddata = () => {
+          placeholder.style.display = 'none';
+          document.getElementById('cropOverlay').classList.add('active');
+          btnCapture.disabled = false;
+          this.updateCaptureUI();
+        };
       } catch (err) {
         console.error('Camera access error:', err);
         placeholder.querySelector('p').textContent = 'Camera access denied. Please allow camera permissions.';
@@ -335,7 +338,7 @@
       const ctx = canvas.getContext('2d');
 
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-        this.showMessage('loginMessage', 'Video not ready.', 'error');
+        console.warn('Video not ready.');
         return;
       }
 
