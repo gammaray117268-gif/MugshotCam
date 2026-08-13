@@ -278,21 +278,21 @@
 
         video.play().catch(e => console.warn('Video play failed:', e));
 
-        if (video.readyState >= video.HAVE_ENOUGH_DATA) {
-          enableCamera();
-        } else {
-          video.onloadeddata = () => enableCamera();
-          video.oncanplay = () => {
-            if (video.readyState >= video.HAVE_ENOUGH_DATA && btnCapture.disabled) {
-              enableCamera();
-            }
-          };
-          setTimeout(() => {
-            if (video.readyState >= video.HAVE_ENOUGH_DATA && btnCapture.disabled) {
-              enableCamera();
-            }
-          }, 800);
-        }
+        let attempts = 0;
+        const maxAttempts = 30;
+
+        const checkReady = () => {
+          attempts++;
+          if (video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+            enableCamera();
+          } else if (attempts < maxAttempts) {
+            setTimeout(checkReady, 100);
+          } else {
+            placeholder.querySelector('p').textContent = 'Camera failed to initialize. Please refresh and try again.';
+            btnCapture.disabled = true;
+          }
+        };
+        checkReady();
       } catch (err) {
         console.error('Camera access error:', err);
         placeholder.querySelector('p').textContent = 'Camera access denied. Please allow camera permissions.';
