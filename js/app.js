@@ -69,6 +69,22 @@
       this.bindEvents();
       this.checkSession();
       this.setDefaultDate();
+      window.addEventListener('error', (e) => {
+        console.error('[Global Error]', e.error);
+        const statusEl = document.getElementById('cameraStatus');
+        if (statusEl && this.state.currentScreen === 'camera') {
+          statusEl.textContent = 'System error: ' + (e.error ? e.error.message : 'Unknown error');
+          statusEl.style.color = 'var(--color-danger)';
+        }
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        console.error('[Unhandled Rejection]', e.reason);
+        const statusEl = document.getElementById('cameraStatus');
+        if (statusEl && this.state.currentScreen === 'camera') {
+          statusEl.textContent = 'System error: ' + (e.reason ? (e.reason.message || e.reason) : 'Unknown error');
+          statusEl.style.color = 'var(--color-danger)';
+        }
+      });
     },
 
     bindEvents: function() {
@@ -77,7 +93,10 @@
       document.getElementById('btnBackToLogin').addEventListener('click', () => window.location.href = 'login.html');
 
       // Camera
-      document.getElementById('btnCapture').addEventListener('click', () => this.capturePhoto());
+      document.getElementById('btnCapture').addEventListener('click', () => {
+        console.log('[Event] btnCapture clicked');
+        this.capturePhoto();
+      });
       document.getElementById('btnRetake').addEventListener('click', () => this.retakePhoto());
       document.getElementById('btnNextAngle').addEventListener('click', () => this.nextAngle());
       document.getElementById('btnSwitchCamera').addEventListener('click', () => this.switchCameraMode());
@@ -243,6 +262,12 @@
           rightSide: null,
           fullBody: null
         },
+        originalPhotos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
         timestamp: new Date().toISOString()
       };
 
@@ -273,7 +298,11 @@
       };
 
       const enableCamera = () => {
-        if (this.state.cameraCallId !== callId) return;
+        if (this.state.cameraCallId !== callId) {
+          console.log('[Camera] enableCamera skipped: stale call');
+          return;
+        }
+        console.log('[Camera] enableCamera called');
         placeholder.style.display = 'none';
         document.getElementById('cropOverlay').classList.add('active');
         btnCapture.disabled = false;
@@ -285,6 +314,7 @@
           statusEl.style.color = '';
         }
         this.updateCaptureUI();
+        console.log('[Camera] Camera enabled. btnCapture disabled=', btnCapture.disabled, 'display=', btnCapture.style.display);
       };
 
       placeholder.style.display = 'flex';
@@ -430,6 +460,8 @@
         btnRetake.style.display = 'none';
         btnNextAngle.style.display = 'none';
       }
+
+      console.log('[UI] updateCaptureUI: captured=', this.state.capturedThisAngle, 'btnCapture display=', btnCapture.style.display, 'disabled=', btnCapture.disabled);
     },
 
     capturePhoto: function() {
@@ -438,60 +470,70 @@
       const ctx = canvas.getContext('2d');
       const statusEl = document.getElementById('cameraStatus');
 
-      const angle = this.angles[this.state.currentAngleIndex];
-      const vw = video.videoWidth || 0;
-      const vh = video.videoHeight || 0;
+      try {
+        const angle = this.angles[this.state.currentAngleIndex];
+        const vw = video.videoWidth || 0;
+        const vh = video.videoHeight || 0;
 
-      if (!vw || !vh) {
+        if (!vw || !vh) {
+          if (statusEl) {
+            statusEl.textContent = 'Video not ready yet. Please wait a moment and try again.';
+            statusEl.style.color = 'var(--color-danger)';
+          }
+          console.warn('Video dimensions not available.');
+          return;
+        }
+
+        canvas.width = 600;
+        canvas.height = 600;
+
+        let cropSize, cropX, cropY;
+
+        if (angle.key === 'fullBody') {
+          cropSize = Math.min(vw, vh * 0.9);
+          cropSize = Math.min(cropSize, vw);
+          cropX = (vw - cropSize) / 2;
+          cropY = (vh - cropSize) / 2 - (cropSize * 0.2);
+        } else {
+          cropSize = Math.min(vw, vh) * 0.85;
+          cropX = (vw - cropSize) / 2;
+          cropY = (vh - cropSize) / 2 - (cropSize * 0.12);
+        }
+
+        cropX = Math.max(0, Math.min(cropX, vw - cropSize));
+        cropY = Math.max(0, Math.min(cropY, vh - cropSize));
+
+        ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, 600, 600);
+
+        const originalCanvas = document.createElement('canvas');
+        originalCanvas.width = vw;
+        originalCanvas.height = vh;
+        const origCtx = originalCanvas.getContext('2d');
+        origCtx.drawImage(video, 0, 0, vw, vh);
+        const originalDataUrl = originalCanvas.toDataURL('image/jpeg', 0.92);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        this.state.session.photos[angle.key] = dataUrl;
+        this.state.session.originalPhotos[angle.key] = originalDataUrl;
+        this.state.capturedThisAngle = true;
+
+        this.showThumbnail(angle.key, dataUrl);
+        this.updateCaptureUI();
+
+        // Flash animation
+        const flash = document.createElement('div');
+        flash.className = 'capture-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 400);
+
+        console.log('[Capture] Success:', angle.key, 'cropped:', !!dataUrl, 'original:', !!originalDataUrl);
+      } catch (err) {
+        console.error('[Capture] Error:', err);
         if (statusEl) {
-          statusEl.textContent = 'Video not ready yet. Please wait a moment and try again.';
+          statusEl.textContent = 'Capture failed: ' + err.message;
           statusEl.style.color = 'var(--color-danger)';
         }
-        console.warn('Video dimensions not available.');
-        return;
       }
-
-      canvas.width = 600;
-      canvas.height = 600;
-
-      let cropSize, cropX, cropY;
-
-      if (angle.key === 'fullBody') {
-        cropSize = Math.min(vw, vh * 0.9);
-        cropSize = Math.min(cropSize, vw);
-        cropX = (vw - cropSize) / 2;
-        cropY = (vh - cropSize) / 2 - (cropSize * 0.2);
-      } else {
-        cropSize = Math.min(vw, vh) * 0.85;
-        cropX = (vw - cropSize) / 2;
-        cropY = (vh - cropSize) / 2 - (cropSize * 0.12);
-      }
-
-      cropX = Math.max(0, Math.min(cropX, vw - cropSize));
-      cropY = Math.max(0, Math.min(cropY, vh - cropSize));
-
-      ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, 600, 600);
-
-      const originalCanvas = document.createElement('canvas');
-      originalCanvas.width = vw;
-      originalCanvas.height = vh;
-      const origCtx = originalCanvas.getContext('2d');
-      origCtx.drawImage(video, 0, 0, vw, vh);
-      const originalDataUrl = originalCanvas.toDataURL('image/jpeg', 0.92);
-
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-      this.state.session.photos[angle.key] = dataUrl;
-      this.state.session.originalPhotos[angle.key] = originalDataUrl;
-      this.state.capturedThisAngle = true;
-
-      this.showThumbnail(angle.key, dataUrl);
-      this.updateCaptureUI();
-
-      // Flash animation
-      const flash = document.createElement('div');
-      flash.className = 'capture-flash';
-      document.body.appendChild(flash);
-      setTimeout(() => flash.remove(), 400);
     },
 
     retakePhoto: function() {
