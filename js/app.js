@@ -260,6 +260,13 @@
       const placeholder = document.getElementById('capturePlaceholder');
       const btnCapture = document.getElementById('btnCapture');
 
+      const enableCamera = () => {
+        placeholder.style.display = 'none';
+        document.getElementById('cropOverlay').classList.add('active');
+        btnCapture.disabled = false;
+        this.updateCaptureUI();
+      };
+
       try {
         this.state.stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: this.state.facingMode },
@@ -267,12 +274,21 @@
         });
         video.srcObject = this.state.stream;
 
-        video.onloadeddata = () => {
-          placeholder.style.display = 'none';
-          document.getElementById('cropOverlay').classList.add('active');
-          btnCapture.disabled = false;
-          this.updateCaptureUI();
-        };
+        if (video.readyState >= video.HAVE_ENOUGH_DATA) {
+          enableCamera();
+        } else {
+          video.onloadeddata = () => enableCamera();
+          video.oncanplay = () => {
+            if (video.readyState >= video.HAVE_ENOUGH_DATA && btnCapture.disabled) {
+              enableCamera();
+            }
+          };
+          setTimeout(() => {
+            if (video.readyState >= video.HAVE_ENOUGH_DATA && btnCapture.disabled) {
+              enableCamera();
+            }
+          }, 800);
+        }
       } catch (err) {
         console.error('Camera access error:', err);
         placeholder.querySelector('p').textContent = 'Camera access denied. Please allow camera permissions.';
