@@ -264,6 +264,7 @@
         placeholder.style.display = 'none';
         document.getElementById('cropOverlay').classList.add('active');
         btnCapture.disabled = false;
+        btnCapture.style.display = 'inline-flex';
         this.updateCaptureUI();
       };
 
@@ -279,11 +280,14 @@
         video.play().catch(e => console.warn('Video play failed:', e));
 
         let attempts = 0;
-        const maxAttempts = 30;
+        const maxAttempts = 40;
 
         const checkReady = () => {
           attempts++;
-          if (video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
+          const streamReady = this.state.stream && this.state.stream.getVideoTracks().length > 0 && this.state.stream.getVideoTracks()[0].readyState === 'live';
+          const videoReady = video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0;
+
+          if (videoReady || (streamReady && attempts >= 10)) {
             enableCamera();
           } else if (attempts < maxAttempts) {
             setTimeout(checkReady, 100);
