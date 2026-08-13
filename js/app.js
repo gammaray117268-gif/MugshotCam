@@ -31,7 +31,8 @@
       currentAngleIndex: 0,
       stream: null,
       capturedThisAngle: false,
-      facingMode: 'user'
+      facingMode: 'user',
+      cameraCallId: 0
     },
 
     angles: [
@@ -80,6 +81,7 @@
       document.getElementById('btnRetake').addEventListener('click', () => this.retakePhoto());
       document.getElementById('btnNextAngle').addEventListener('click', () => this.nextAngle());
       document.getElementById('btnSwitchCamera').addEventListener('click', () => this.switchCameraMode());
+      document.getElementById('btnRetryCamera').addEventListener('click', () => this.startCamera());
 
       // Review
       document.getElementById('btnExportWord').addEventListener('click', () => this.exportToWord());
@@ -256,51 +258,115 @@
     // Camera Management
     // ==========================================
     startCamera: async function() {
+      const callId = ++this.state.cameraCallId;
       const video = document.getElementById('webcamVideo');
       const placeholder = document.getElementById('capturePlaceholder');
       const btnCapture = document.getElementById('btnCapture');
+      const statusEl = document.getElementById('cameraStatus');
+
+      const setStatus = (msg) => {
+        if (statusEl) {
+          statusEl.textContent = msg;
+          statusEl.style.color = '';
+        }
+        console.log('[Camera]', msg);
+      };
 
       const enableCamera = () => {
+        if (this.state.cameraCallId !== callId) return;
         placeholder.style.display = 'none';
         document.getElementById('cropOverlay').classList.add('active');
         btnCapture.disabled = false;
         btnCapture.style.display = 'inline-flex';
+        const retryBtn = document.getElementById('btnRetryCamera');
+        if (retryBtn) retryBtn.style.display = 'none';
+        if (statusEl) {
+          statusEl.textContent = 'Camera ready';
+          statusEl.style.color = '';
+        }
         this.updateCaptureUI();
       };
 
+      placeholder.style.display = 'flex';
+      document.getElementById('cropOverlay').classList.remove('active');
+      btnCapture.disabled = true;
+      btnCapture.style.display = 'inline-flex';
+      const retryBtn = document.getElementById('btnRetryCamera');
+      if (retryBtn) retryBtn.style.display = 'none';
+      document.getElementById('cameraPlaceholderText').textContent = 'Initializing camera...';
+      setStatus('Requesting camera access...');
+
       try {
-        this.state.stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: this.state.facingMode },
-          audio: false
-        });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Camera request timed out')), 10000)
+        );
+        this.state.stream = await Promise.race([
+          navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: this.state.facingMode },
+            audio: false
+          }),
+          timeoutPromise
+        ]);
+        setStatus('Camera stream acquired. Starting video...');
+
         video.srcObject = this.state.stream;
         video.setAttribute('playsinline', '');
         video.muted = true;
 
-        video.play().catch(e => console.warn('Video play failed:', e));
+        try {
+          await video.play();
+          setStatus('Video playing. Waiting for frames...');
+        } catch (playErr) {
+          console.warn('Video play failed:', playErr);
+          setStatus('Video play issue. Waiting for frames anyway...');
+        }
 
-        let attempts = 0;
-        const maxAttempts = 40;
+        const waitForVideo = () => new Promise((resolve) => {
+          const maxWait = 5000;
+          const start = Date.now();
 
-        const checkReady = () => {
-          attempts++;
-          const streamReady = this.state.stream && this.state.stream.getVideoTracks().length > 0 && this.state.stream.getVideoTracks()[0].readyState === 'live';
-          const videoReady = video.readyState >= video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0;
+          const check = () => {
+            if (this.state.cameraCallId !== callId) {
+              resolve(false);
+              return;
+            }
+            const ready = video.readyState >= video.HAVE_ENOUGH_DATA &&
+                          video.videoWidth > 0 &&
+                          video.videoHeight > 0;
+            if (ready) {
+              setStatus(`Video ready: ${video.videoWidth}x${video.videoHeight}`);
+              resolve(true);
+            } else if (Date.now() - start > maxWait) {
+              setStatus('Video timeout. Enabling capture anyway.');
+              resolve(false);
+            } else {
+              setTimeout(check, 100);
+            }
+          };
+          check();
+        });
 
-          if (videoReady || (streamReady && attempts >= 10)) {
-            enableCamera();
-          } else if (attempts < maxAttempts) {
-            setTimeout(checkReady, 100);
-          } else {
-            placeholder.querySelector('p').textContent = 'Camera failed to initialize. Please refresh and try again.';
-            btnCapture.disabled = true;
-          }
-        };
-        checkReady();
+        const videoReady = await waitForVideo();
+        enableCamera();
       } catch (err) {
         console.error('Camera access error:', err);
-        placeholder.querySelector('p').textContent = 'Camera access denied. Please allow camera permissions.';
+        let msg = 'Camera access denied or unavailable.';
+        if (err.name === 'NotAllowedError') {
+          msg = 'Camera permission denied. Please allow camera access and refresh.';
+        } else if (err.name === 'NotFoundError') {
+          msg = 'No camera found on this device.';
+        } else if (err.name === 'NotReadableError') {
+          msg = 'Camera is in use by another app. Close other apps and retry.';
+        } else if (err.name === 'OverconstrainedError') {
+          msg = 'Camera does not meet requirements. Try switching camera mode.';
+        } else if (err.message === 'Camera request timed out') {
+          msg = 'Camera request timed out. Please check permissions and retry.';
+        }
+        placeholder.querySelector('p').textContent = msg;
+        const retryBtn = document.getElementById('btnRetryCamera');
+        if (retryBtn) retryBtn.style.display = 'inline-flex';
         btnCapture.disabled = true;
+        setStatus('Error: ' + msg);
       }
     },
 
@@ -360,8 +426,13 @@
       const video = document.getElementById('webcamVideo');
       const canvas = document.getElementById('captureCanvas');
       const ctx = canvas.getContext('2d');
+      const statusEl = document.getElementById('cameraStatus');
 
       if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        if (statusEl) {
+          statusEl.textContent = 'Video not ready. Please wait or retry.';
+          statusEl.style.color = 'var(--color-danger)';
+        }
         console.warn('Video not ready.');
         return;
       }
@@ -371,6 +442,10 @@
       const vh = video.videoHeight;
 
       if (!vw || !vh) {
+        if (statusEl) {
+          statusEl.textContent = 'Video dimensions not available. Please retry.';
+          statusEl.style.color = 'var(--color-danger)';
+        }
         console.warn('Video dimensions not available.');
         return;
       }

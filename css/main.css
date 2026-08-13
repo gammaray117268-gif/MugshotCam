@@ -565,6 +565,18 @@ body {
   gap: 14px;
 }
 
+.camera-status {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.camera-status.error {
+  color: var(--color-danger);
+}
+
 .capture-progress {
   width: 100%;
   max-width: 720px;

@@ -93,10 +93,12 @@
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                   <circle cx="12" cy="13" r="4"/>
                 </svg>
-                <p>Initializing camera...</p>
+                <p id="cameraPlaceholderText">Initializing camera...</p>
+                <button id="btnRetryCamera" class="btn btn-secondary" style="display:none; margin-top:12px;">Retry Camera</button>
               </div>
             </div>
             <div class="camera-controls">
+              <div id="cameraStatus" class="camera-status">Initializing camera...</div>
               <div class="capture-progress">
                 <div class="progress-bar">
                   <div id="progressFill" class="progress-fill" style="width: 0%"></div>
@@ -104,7 +106,7 @@
                 <span id="progressText">0 of 4 captured</span>
               </div>
               <div class="camera-actions">
-                <button id="btnCapture" class="btn btn-primary btn-lg" disabled>
+                <button id="btnCapture" type="button" class="btn btn-primary btn-lg" disabled>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <circle cx="12" cy="12" r="4" fill="currentColor"/>
