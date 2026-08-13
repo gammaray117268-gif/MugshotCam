@@ -273,6 +273,10 @@
           audio: false
         });
         video.srcObject = this.state.stream;
+        video.setAttribute('playsinline', '');
+        video.muted = true;
+
+        video.play().catch(e => console.warn('Video play failed:', e));
 
         if (video.readyState >= video.HAVE_ENOUGH_DATA) {
           enableCamera();
@@ -361,6 +365,11 @@
       const angle = this.angles[this.state.currentAngleIndex];
       const vw = video.videoWidth;
       const vh = video.videoHeight;
+
+      if (!vw || !vh) {
+        console.warn('Video dimensions not available.');
+        return;
+      }
 
       canvas.width = 600;
       canvas.height = 600;
