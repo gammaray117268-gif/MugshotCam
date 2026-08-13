@@ -1014,6 +1014,54 @@ body {
   flex-wrap: wrap;
 }
 
+.share-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--color-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  text-align: left;
+}
+
+.share-option:hover {
+  border-color: var(--color-primary);
+  background: rgba(55, 79, 107, 0.03);
+}
+
+.share-option svg {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.share-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.share-option strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.share-option small {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

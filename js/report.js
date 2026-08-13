@@ -30,7 +30,13 @@
 
       document.getElementById('btnPrintRecord').addEventListener('click', () => this.printRecord(this.currentViewIndex));
       document.getElementById('btnExportWordRecord').addEventListener('click', () => this.exportRecordToWord(this.currentViewIndex));
-      document.getElementById('btnShareRecord').addEventListener('click', () => this.shareRecord(this.currentViewIndex));
+      document.getElementById('btnShareRecord').addEventListener('click', () => this.openShareModal());
+
+      document.getElementById('shareOs').addEventListener('click', () => this.shareViaOs());
+      document.getElementById('shareEmail').addEventListener('click', () => this.shareViaEmail());
+      document.getElementById('shareMessenger').addEventListener('click', () => this.shareViaMessenger());
+      document.getElementById('shareDownload').addEventListener('click', () => this.shareDownloadImages());
+      document.getElementById('shareCopyText').addEventListener('click', () => this.shareCopyText());
 
       // Close modal on overlay click
       document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -580,10 +586,17 @@
       }
     },
 
-    shareRecord: async function(index) {
-      const rec = this.records[index];
-      if (!rec || !rec.detainee) return;
+    openShareModal: function() {
+      this.openModal('shareModal');
+    },
 
+    getShareText: function(rec) {
+      const detainee = rec.detainee || {};
+      const officer = rec.officer || {};
+      return `MUGSHOT RECORD\nBooking ID: ${detainee.bookingId || 'N/A'}\nDetainee: ${detainee.fullName || 'Unknown'}\nOffense: ${detainee.offense || 'N/A'}\nDate of Arrest: ${detainee.dateOfArrest || 'N/A'}\nOfficer: ${officer.officerName || 'Unknown'} (${officer.rank || 'N/A'})\nBadge: ${officer.badgeId || 'N/A'}`;
+    },
+
+    getRecordFiles: function(rec) {
       const photos = rec.session ? rec.session.photos : {};
       const photoKeys = ['frontHalf', 'leftSide', 'rightSide', 'fullBody'];
       const labels = {
@@ -607,7 +620,14 @@
           }
         }
       }
+      return files;
+    },
 
+    shareViaOs: async function() {
+      const rec = this.records[this.currentViewIndex];
+      if (!rec || !rec.detainee) return;
+
+      const files = this.getRecordFiles(rec);
       if (files.length === 0) {
         alert('No images available to share for this record.');
         return;
@@ -615,17 +635,18 @@
 
       const shareData = {
         title: `Mugshot Record - ${rec.detainee.bookingId || 'Record'}`,
-        text: `Mugshot record for ${rec.detainee.fullName || 'Unknown'} - ${rec.detainee.offense || 'No offense specified'}`,
+        text: this.getShareText(rec),
         files: files
       };
 
       if (navigator.canShare && navigator.canShare(shareData)) {
         try {
           await navigator.share(shareData);
+          this.closeModal('shareModal');
           return;
         } catch (err) {
           if (err.name === 'AbortError') return;
-          console.error('Share failed:', err);
+          console.error('OS share failed:', err);
         }
       }
 
@@ -635,14 +656,52 @@
             title: shareData.title,
             text: shareData.text
           });
+          this.closeModal('shareModal');
           return;
         } catch (err) {
           if (err.name === 'AbortError') return;
-          console.error('Share fallback failed:', err);
+          console.error('OS share fallback failed:', err);
         }
       }
 
-      // Fallback: download images
+      alert('OS Share is not supported on this browser. Please use Download Images or Copy Text instead.');
+    },
+
+    shareViaEmail: function() {
+      const rec = this.records[this.currentViewIndex];
+      if (!rec || !rec.detainee) return;
+
+      const detainee = rec.detainee;
+      const officer = rec.officer || {};
+      const subject = encodeURIComponent(`Mugshot Record - ${detainee.bookingId || 'Record'}`);
+      const body = encodeURIComponent(this.getShareText(rec));
+      const mailto = `mailto:?subject=${subject}&body=${body}`;
+
+      window.open(mailto, '_blank');
+      this.closeModal('shareModal');
+    },
+
+    shareViaMessenger: function() {
+      const rec = this.records[this.currentViewIndex];
+      if (!rec || !rec.detainee) return;
+
+      const text = encodeURIComponent(this.getShareText(rec));
+      const url = `https://www.facebook.com/dialog/send?link=${encodeURIComponent(window.location.href)}&app_id=YOUR_APP_ID&redirect_uri=${encodeURIComponent(window.location.href)}`;
+      
+      window.open(`https://www.messenger.com/t/?link=${encodeURIComponent(window.location.href)}&text=${text}`, '_blank');
+      this.closeModal('shareModal');
+    },
+
+    shareDownloadImages: function() {
+      const rec = this.records[this.currentViewIndex];
+      if (!rec || !rec.detainee) return;
+
+      const files = this.getRecordFiles(rec);
+      if (files.length === 0) {
+        alert('No images available to share for this record.');
+        return;
+      }
+
       for (const file of files) {
         const url = URL.createObjectURL(file);
         const a = document.createElement('a');
@@ -653,7 +712,22 @@
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-      alert('Sharing is not supported on this browser. Images have been downloaded instead.');
+
+      this.closeModal('shareModal');
+    },
+
+    shareCopyText: function() {
+      const rec = this.records[this.currentViewIndex];
+      if (!rec || !rec.detainee) return;
+
+      const text = this.getShareText(rec);
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Record details copied to clipboard.');
+      }).catch(() => {
+        alert('Failed to copy text. Please try again.');
+      });
+
+      this.closeModal('shareModal');
     }
   };
 

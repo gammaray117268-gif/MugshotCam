@@ -67,6 +67,44 @@
     </div>
   </div>
 
+  <!-- Share Modal -->
+  <div id="shareModal" class="modal-overlay">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h3>Share Record</h3>
+        <button class="modal-close" onclick="ReportApp.closeModal('shareModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-top:0;margin-bottom:14px;color:var(--color-text-muted);">Choose how you want to share this mugshot record.</p>
+        <div class="share-options">
+          <button class="share-option" id="shareOs">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            <span><strong>OS Share Sheet</strong><small>Messenger, WhatsApp, Bluetooth, Quick Share...</small></span>
+          </button>
+          <button class="share-option" id="shareEmail">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span><strong>Email</strong><small>Send record summary via email</small></span>
+          </button>
+          <button class="share-option" id="shareMessenger">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span><strong>Messenger / Chat</strong><small>Open Messenger with record text</small></span>
+          </button>
+          <button class="share-option" id="shareDownload">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span><strong>Download Images</strong><small>Save all mugshots to device</small></span>
+          </button>
+          <button class="share-option" id="shareCopyText">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span><strong>Copy Text</strong><small>Copy record details to clipboard</small></span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="ReportApp.closeModal('shareModal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- View Detail Modal -->
   <div id="viewModal" class="modal-overlay">
     <div class="modal">
