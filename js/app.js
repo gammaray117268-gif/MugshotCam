@@ -20,6 +20,12 @@
           rightSide: null,
           fullBody: null
         },
+        originalPhotos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
         timestamp: null
       },
       currentAngleIndex: 0,
@@ -358,8 +364,16 @@
 
       ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, 600, 600);
 
+      const originalCanvas = document.createElement('canvas');
+      originalCanvas.width = vw;
+      originalCanvas.height = vh;
+      const origCtx = originalCanvas.getContext('2d');
+      origCtx.drawImage(video, 0, 0, vw, vh);
+      const originalDataUrl = originalCanvas.toDataURL('image/jpeg', 0.92);
+
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       this.state.session.photos[angle.key] = dataUrl;
+      this.state.session.originalPhotos[angle.key] = originalDataUrl;
       this.state.capturedThisAngle = true;
 
       this.showThumbnail(angle.key, dataUrl);
@@ -369,6 +383,7 @@
     retakePhoto: function() {
       const angle = this.angles[this.state.currentAngleIndex];
       this.state.session.photos[angle.key] = null;
+      this.state.session.originalPhotos[angle.key] = null;
       this.state.capturedThisAngle = false;
 
       const thumb = document.getElementById('thumb-' + angle.key);
@@ -500,6 +515,11 @@
       setImg('wordPhotoRight', this.state.session.photos.rightSide);
       setImg('wordPhotoFull', this.state.session.photos.fullBody);
 
+      setImg('wordOriginalPhotoFront', this.state.session.originalPhotos.frontHalf);
+      setImg('wordOriginalPhotoLeft', this.state.session.originalPhotos.leftSide);
+      setImg('wordOriginalPhotoRight', this.state.session.originalPhotos.rightSide);
+      setImg('wordOriginalPhotoFull', this.state.session.originalPhotos.fullBody);
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -511,17 +531,21 @@
             table { border-collapse: collapse; width: 100%; }
             td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
             .word-label { font-weight: bold; background: #f2f2f2; }
-            .word-photo-grid { margin: 18px 0; }
-            .word-photo-cell { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; }
-            .word-photo-cell-wide { width: 100%; }
-            .word-photo-cell img { width: 120px; height: 120px; object-fit: cover; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
-            .word-photo-caption { font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+            .word-title { text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin: 14px 0; text-transform: uppercase; }
+            .word-header { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 14px; }
             .word-slate { border: 1px solid #000; padding: 10px; margin: 14px 0; background: #f9f9f9; font-size: 10pt; }
             .word-signatures { margin-top: 40px; }
             .sig-block { text-align: center; width: 33.33%; }
             .sig-line { border-bottom: 1px solid #000; height: 50px; margin-bottom: 6px; }
-            .word-header { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 14px; }
-            .word-title { text-align: center; font-size: 16pt; font-weight: bold; text-decoration: underline; margin: 14px 0; text-transform: uppercase; }
+            .page-break { page-break-after: always; }
+            .word-photo-grid-original { margin: 18px 0; }
+            .word-photo-cell-original { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top; }
+            .word-photo-cell-original img { max-width: 100%; height: auto; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .word-photo-grid-cropped { margin: 18px 0; }
+            .word-photo-cell-cropped { text-align: center; border: 1px solid #000; padding: 8px; width: 33.33%; vertical-align: top; }
+            .word-photo-cell-cropped img { width: 5.08cm; height: 5.08cm; object-fit: cover; display: block; margin: 0 auto 6px; border: 1px solid #ccc; }
+            .word-photo-caption { font-size: 9pt; font-weight: bold; text-transform: uppercase; }
+            .word-photo-cell-wide { width: 100%; }
             img { max-width: 100%; }
           </style>
         </head>
@@ -566,6 +590,12 @@
       this.state.detainee = null;
       this.state.session = {
         photos: {
+          frontHalf: null,
+          leftSide: null,
+          rightSide: null,
+          fullBody: null
+        },
+        originalPhotos: {
           frontHalf: null,
           leftSide: null,
           rightSide: null,

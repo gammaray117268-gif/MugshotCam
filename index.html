@@ -251,87 +251,124 @@
   <!-- Hidden template for MS Word export -->
   <div id="wordExportTemplate" style="display:none;">
     <div class="word-doc">
-      <div class="word-header">
-        <p class="word-republic">Republic of the Philippines</p>
-        <p class="word-station">MOISES PADILLA MUNICIPAL POLICE STATION</p>
-        <p class="word-sub">Moises Padilla, Negros Occidental</p>
-      </div>
-      <div class="word-title">MUGSHOT RECORD</div>
-      <table class="word-table word-table-details">
-        <tr>
-          <td class="word-label">Booking ID:</td>
-          <td class="word-value" id="wordBookingId"></td>
-          <td class="word-label">Date:</td>
-          <td class="word-value" id="wordDate"></td>
-        </tr>
-        <tr>
-          <td class="word-label">Detainee Name:</td>
-          <td class="word-value" id="wordDetaineeName"></td>
-          <td class="word-label">Date of Arrest:</td>
-          <td class="word-value" id="wordArrestDate"></td>
-        </tr>
-        <tr>
-          <td class="word-label">Offense / Violation:</td>
-          <td class="word-value" colspan="3" id="wordOffense"></td>
-        </tr>
-      </table>
-      <table class="word-table word-table-officer">
-        <tr>
-          <td class="word-label">Officer on Duty:</td>
-          <td class="word-value" id="wordOfficerName"></td>
-          <td class="word-label">Rank:</td>
-          <td class="word-value" id="wordOfficerRank"></td>
-          <td class="word-label">Badge/PNP ID:</td>
-          <td class="word-value" id="wordOfficerBadge"></td>
-        </tr>
-      </table>
-      <div class="word-photo-section">
-        <table class="word-photo-grid">
+      <!-- Page 1: Booking Details -->
+      <div class="word-page">
+        <div class="word-header">
+          <p class="word-republic">Republic of the Philippines</p>
+          <p class="word-station">MOISES PADILLA MUNICIPAL POLICE STATION</p>
+          <p class="word-sub">Moises Padilla, Negros Occidental</p>
+        </div>
+        <div class="word-title">MUGSHOT RECORD</div>
+        <table class="word-table word-table-details">
           <tr>
-            <td class="word-photo-cell">
+            <td class="word-label">Booking ID:</td>
+            <td class="word-value" id="wordBookingId"></td>
+            <td class="word-label">Date:</td>
+            <td class="word-value" id="wordDate"></td>
+          </tr>
+          <tr>
+            <td class="word-label">Detainee Name:</td>
+            <td class="word-value" id="wordDetaineeName"></td>
+            <td class="word-label">Date of Arrest:</td>
+            <td class="word-value" id="wordArrestDate"></td>
+          </tr>
+          <tr>
+            <td class="word-label">Offense / Violation:</td>
+            <td class="word-value" colspan="3" id="wordOffense"></td>
+          </tr>
+        </table>
+        <table class="word-table word-table-officer">
+          <tr>
+            <td class="word-label">Officer on Duty:</td>
+            <td class="word-value" id="wordOfficerName"></td>
+            <td class="word-label">Rank:</td>
+            <td class="word-value" id="wordOfficerRank"></td>
+            <td class="word-label">Badge/PNP ID:</td>
+            <td class="word-value" id="wordOfficerBadge"></td>
+          </tr>
+        </table>
+        <div class="word-slate">
+          <p><strong>Digital Slate Data:</strong></p>
+          <p id="wordSlateText"></p>
+        </div>
+        <table class="word-signatures">
+          <tr>
+            <td class="sig-block">
+              <div class="sig-line"></div>
+              <p>Detainee Signature</p>
+              <p class="sig-date">Date: _______________</p>
+            </td>
+            <td class="sig-block">
+              <div class="sig-line"></div>
+              <p>Investigating Officer</p>
+              <p class="sig-date">Date: _______________</p>
+            </td>
+            <td class="sig-block">
+              <div class="sig-line"></div>
+              <p>Station Commander</p>
+              <p class="sig-date">Date: _______________</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="page-break"></div>
+
+      <!-- Page 2: Original Images -->
+      <div class="word-page">
+        <div class="word-title">ORIGINAL CAPTURED IMAGES</div>
+        <table class="word-photo-grid-original">
+          <tr>
+            <td class="word-photo-cell-original">
+              <img id="wordOriginalPhotoFront" alt="Front Half-Body">
+              <div class="word-photo-caption">FRONT VIEW (Half-Body)</div>
+            </td>
+            <td class="word-photo-cell-original">
+              <img id="wordOriginalPhotoLeft" alt="Left Side Half-Body">
+              <div class="word-photo-caption">LEFT SIDE VIEW (Half-Body)</div>
+            </td>
+            <td class="word-photo-cell-original">
+              <img id="wordOriginalPhotoRight" alt="Right Side Half-Body">
+              <div class="word-photo-caption">RIGHT SIDE VIEW (Half-Body)</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="word-photo-cell-original word-photo-cell-wide" colspan="3">
+              <img id="wordOriginalPhotoFull" alt="Front Full-Body">
+              <div class="word-photo-caption">FRONT VIEW (Full-Body)</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="page-break"></div>
+
+      <!-- Page 3: Cropped Mugshots -->
+      <div class="word-page">
+        <div class="word-title">CROPPED MUGSHOTS (2×2 inches / 5.08 cm)</div>
+        <table class="word-photo-grid-cropped">
+          <tr>
+            <td class="word-photo-cell-cropped">
               <img id="wordPhotoFront" alt="Front Half-Body">
               <div class="word-photo-caption">FRONT VIEW (Half-Body)</div>
             </td>
-            <td class="word-photo-cell">
+            <td class="word-photo-cell-cropped">
               <img id="wordPhotoLeft" alt="Left Side Half-Body">
               <div class="word-photo-caption">LEFT SIDE VIEW (Half-Body)</div>
             </td>
-            <td class="word-photo-cell">
+            <td class="word-photo-cell-cropped">
               <img id="wordPhotoRight" alt="Right Side Half-Body">
               <div class="word-photo-caption">RIGHT SIDE VIEW (Half-Body)</div>
             </td>
           </tr>
           <tr>
-            <td class="word-photo-cell word-photo-cell-wide" colspan="3">
+            <td class="word-photo-cell-cropped word-photo-cell-wide" colspan="3">
               <img id="wordPhotoFull" alt="Front Full-Body">
               <div class="word-photo-caption">FRONT VIEW (Full-Body)</div>
             </td>
           </tr>
         </table>
       </div>
-      <div class="word-slate">
-        <p><strong>Digital Slate Data:</strong></p>
-        <p id="wordSlateText"></p>
-      </div>
-      <table class="word-signatures">
-        <tr>
-          <td class="sig-block">
-            <div class="sig-line"></div>
-            <p>Detainee Signature</p>
-            <p class="sig-date">Date: _______________</p>
-          </td>
-          <td class="sig-block">
-            <div class="sig-line"></div>
-            <p>Investigating Officer</p>
-            <p class="sig-date">Date: _______________</p>
-          </td>
-          <td class="sig-block">
-            <div class="sig-line"></div>
-            <p>Station Commander</p>
-            <p class="sig-date">Date: _______________</p>
-          </td>
-        </tr>
-      </table>
     </div>
   </div>
 

@@ -1292,7 +1292,9 @@ body {
   }
 
   .photo-item img {
-    max-width: 100%;
+    width: 5.08cm;
+    height: 5.08cm;
+    object-fit: cover;
     border: 1px solid #999;
   }
 
