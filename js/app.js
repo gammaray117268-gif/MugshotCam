@@ -357,7 +357,6 @@
       cropY = Math.max(0, Math.min(cropY, vh - cropSize));
 
       ctx.drawImage(video, cropX, cropY, cropSize, cropSize, 0, 0, 600, 600);
-      this.applyDigitalSlate(ctx, 600, 600);
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       this.state.session.photos[angle.key] = dataUrl;
@@ -397,49 +396,6 @@
       this.saveSession();
       this.stopCamera();
       this.navigateTo('review');
-    },
-
-    // ==========================================
-    // Digital Slate
-    // ==========================================
-    applyDigitalSlate: function(ctx, width, height) {
-      const slateHeight = height * 0.28;
-      const slateY = height - slateHeight;
-
-      ctx.fillStyle = 'rgba(0, 30, 80, 0.78)';
-      ctx.fillRect(0, slateY, width, slateHeight);
-
-      const borderY = slateY + 2;
-      ctx.strokeStyle = 'rgba(244, 208, 63, 0.9)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, borderY);
-      ctx.lineTo(width, borderY);
-      ctx.stroke();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 20px Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('MOISES PADILLA MPS', width / 2, slateY + 28);
-
-      ctx.font = '12px Arial, sans-serif';
-      ctx.textAlign = 'left';
-      const lines = [
-        `Detainee: ${this.state.detainee.fullName}`,
-        `Offense: ${this.state.detainee.offense}`,
-        `Arrest Date: ${this.state.detainee.dateOfArrest}`,
-        `Officer: ${this.state.officer.officerName} (${this.state.officer.rank})`
-      ];
-
-      lines.forEach((line, i) => {
-        ctx.fillText(line, 18, slateY + 52 + (i * 16));
-      });
-
-      ctx.textAlign = 'right';
-      ctx.font = '10px Arial, sans-serif';
-      ctx.fillText(`Badge: ${this.state.officer.badgeId}`, width - 18, slateY + 52);
-      ctx.fillText(`Booking: ${this.state.detainee.bookingId}`, width - 18, slateY + 70);
-      ctx.fillText(new Date().toLocaleString(), width - 18, slateY + 88);
     },
 
     // ==========================================
