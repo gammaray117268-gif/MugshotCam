@@ -1,12 +1,25 @@
 (function() {
   'use strict';
 
-  function init() {
-    if (localStorage.getItem('mpmps_current_officer')) {
-      window.location.href = 'index.html';
-      return;
-    }
+  const API_BASE = './api';
 
+  function init() {
+    // Check if already logged in via session
+    checkSession();
+  }
+
+  async function checkSession() {
+    try {
+      const res = await fetch(API_BASE + '/officer.php', { method: 'GET', credentials: 'same-origin' });
+      const data = await res.json();
+      if (data.success && data.officer) {
+        sessionStorage.setItem('mpmps_current_officer', JSON.stringify(data.officer));
+        window.location.href = 'index.html';
+        return;
+      }
+    } catch (e) {
+      console.error('Session check failed:', e);
+    }
     bindEvents();
   }
 
@@ -15,7 +28,7 @@
     document.getElementById('btnRegister').addEventListener('click', handleRegister);
   }
 
-  function handleLogin() {
+  async function handleLogin() {
     const name = document.getElementById('officerName').value.trim();
     const rank = document.getElementById('officerRank').value;
     const badge = document.getElementById('officerBadge').value.trim();
@@ -25,19 +38,29 @@
       return;
     }
 
-    const officers = JSON.parse(localStorage.getItem('mpmps_officers') || '[]');
-    const found = officers.find(o => o.badgeId === badge && o.officerName === name && o.rank === rank);
-
-    if (!found) {
-      showMessage('Officer not found. Please register first.', 'error');
-      return;
+    try {
+      const res = await fetch(API_BASE + '/login.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ officerName: name, rank, badgeId: badge }),
+        credentials: 'same-origin'
+      });
+      const data = await res.json();
+      if (data.success) {
+        sessionStorage.setItem('mpmps_current_officer', JSON.stringify(data.officer));
+        showMessage('Login successful. Proceed to registration.', 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 800);
+      } else {
+        showMessage(data.message, 'error');
+      }
+    } catch (e) {
+      showMessage('Login failed. Please try again.', 'error');
     }
-
-    localStorage.setItem('mpmps_current_officer', JSON.stringify(found));
-    window.location.href = 'index.html';
   }
 
-  function handleRegister() {
+  async function handleRegister() {
     const name = document.getElementById('officerName').value.trim();
     const rank = document.getElementById('officerRank').value;
     const badge = document.getElementById('officerBadge').value.trim();
@@ -47,19 +70,26 @@
       return;
     }
 
-    const officers = JSON.parse(localStorage.getItem('mpmps_officers') || '[]');
-
-    if (officers.find(o => o.badgeId === badge)) {
-      showMessage('Badge ID already registered.', 'error');
-      return;
+    try {
+      const res = await fetch(API_BASE + '/register.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ officerName: name, rank, badgeId: badge }),
+        credentials: 'same-origin'
+      });
+      const data = await res.json();
+      if (data.success) {
+        sessionStorage.setItem('mpmps_current_officer', JSON.stringify(data.officer));
+        showMessage('Registration successful. Proceed to registration.', 'success');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 800);
+      } else {
+        showMessage(data.message, 'error');
+      }
+    } catch (e) {
+      showMessage('Registration failed. Please try again.', 'error');
     }
-
-    const newOfficer = { officerName: name, rank, badgeId: badge };
-    officers.push(newOfficer);
-    localStorage.setItem('mpmps_officers', JSON.stringify(officers));
-    localStorage.setItem('mpmps_current_officer', JSON.stringify(newOfficer));
-
-    window.location.href = 'index.html';
   }
 
   function showMessage(text, type) {
