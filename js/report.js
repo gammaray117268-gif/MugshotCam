@@ -31,8 +31,10 @@
       document.getElementById('btnPrintRecord').addEventListener('click', () => this.printRecord(this.currentViewIndex));
       document.getElementById('btnExportWordRecord').addEventListener('click', () => this.exportRecordToWord(this.currentViewIndex));
       document.getElementById('btnShareRecord').addEventListener('click', () => this.openShareModal());
+      document.getElementById('btnConfirmUpload').addEventListener('click', () => this.confirmUpload());
+      document.getElementById('uploadPhotoInput').addEventListener('change', (e) => this.handleFileSelect(e));
 
-      document.getElementById('shareOs').addEventListener('click', () => this.shareViaOs());
+      // Close modal on overlay click
       document.getElementById('shareEmail').addEventListener('click', () => this.shareViaEmail());
       document.getElementById('shareMessenger').addEventListener('click', () => this.shareViaMessenger());
       document.getElementById('shareDownload').addEventListener('click', () => this.shareDownloadImages());
@@ -41,14 +43,26 @@
       // Close modal on overlay click
       document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', (e) => {
-          if (e.target === overlay) this.closeModal(overlay.id);
+          if (e.target === overlay) {
+            if (overlay.id === 'uploadPhotoModal') {
+              this.closeUploadModal();
+            } else {
+              this.closeModal(overlay.id);
+            }
+          }
         });
       });
 
       // Close modal on Escape key
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          document.querySelectorAll('.modal-overlay.active').forEach(m => this.closeModal(m.id));
+          document.querySelectorAll('.modal-overlay.active').forEach(m => {
+            if (m.id === 'uploadPhotoModal') {
+              this.closeUploadModal();
+            } else {
+              this.closeModal(m.id);
+            }
+          });
         }
       });
     },
@@ -166,10 +180,31 @@
         <div class="detail-photos">
           ${photosHtml}
         </div>
+        <div class="additional-photos-section" id="additionalPhotosSection">
+          <h4>Supplementary Photos</h4>
+          <div class="additional-photos-grid" id="additionalPhotosGrid"></div>
+          <button class="add-photo-btn" onclick="ReportApp.openUploadModal(${index})">+ Add Photo</button>
+        </div>
       `;
 
       document.getElementById('viewModalBody').innerHTML = html;
       this.openModal('viewModal');
+
+      const additionalPhotos = this.getAdditionalPhotos(rec);
+      const grid = document.getElementById('additionalPhotosGrid');
+      if (grid) {
+        if (additionalPhotos.length === 0) {
+          grid.innerHTML = '<p style="color:var(--color-text-muted);font-size:0.85rem;">No supplementary photos added.</p>';
+        } else {
+          grid.innerHTML = additionalPhotos.map((photo, pIndex) => `
+            <div class="additional-photo-item">
+              <img src="${photo.src}" alt="${this.escapeHtml(photo.label)}">
+              <div class="additional-photo-label">${this.escapeHtml(photo.label)}</div>
+              <button class="btn-delete-photo" onclick="ReportApp.deleteAdditionalPhoto(${index}, ${pIndex})" title="Delete photo">&times;</button>
+            </div>
+          `).join('');
+        }
+      }
     },
 
     editRecord: function(index) {
@@ -286,6 +321,14 @@
         `;
       }).join('');
 
+      const additionalPhotos = this.getAdditionalPhotos(rec);
+      const additionalPhotosHtml = additionalPhotos.map((photo, i) => `
+        <div class="print-photo">
+          <img src="${photo.src}" alt="${this.escapeHtml(photo.label)}">
+          <div class="print-photo-caption">${this.escapeHtml(photo.label)}</div>
+        </div>
+      `).join('');
+
       const printContent = `
         <div class="print-record">
           <div class="print-header">
@@ -326,6 +369,12 @@
           <div class="print-photos-grid">
             ${photosHtml}
           </div>
+          ${additionalPhotos.length > 0 ? `
+          <h2 class="print-section-title">SUPPLEMENTARY PHOTOS</h2>
+          <div class="print-photos-grid">
+            ${additionalPhotosHtml}
+          </div>
+          ` : ''}
           <div class="print-signatures">
             <div class="print-sig-block">
               <div class="print-sig-line"></div>
@@ -553,23 +602,38 @@
         </html>
       `;
 
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = htmlContent;
-      document.body.appendChild(tempDiv);
+      const additionalPhotos = this.getAdditionalPhotos(rec);
+      if (additionalPhotos.length > 0) {
+        const additionalPhotosHtml = additionalPhotos.map((photo) => `
+          <div class="word-photo-cell-original">
+            <img src="${photo.src}" alt="${this.escapeHtml(photo.label)}">
+            <div class="word-photo-caption">${this.escapeHtml(photo.label)}</div>
+          </div>
+        `).join('');
+        htmlContent = htmlContent.replace('</body>', `
+          <div class="page-break"></div>
+          <div class="word-title">SUPPLEMENTARY PHOTOS</div>
+          <table class="word-photo-grid-original">
+            <tr>${additionalPhotosHtml}</tr>
+          </table>
+        </body>`);
+      }
 
-      setImg('wordPhotoFront', photos.frontHalf);
-      setImg('wordPhotoLeft', photos.leftSide);
-      setImg('wordPhotoRight', photos.rightSide);
-      setImg('wordPhotoFull', photos.fullBody);
+      htmlContent = htmlContent
+        .replace(/<img id="wordPhotoFront"[^>]*>/, `<img id="wordPhotoFront" src="${photos.frontHalf || ''}" alt="Front Half-Body">`)
+        .replace(/<img id="wordPhotoLeft"[^>]*>/, `<img id="wordPhotoLeft" src="${photos.leftSide || ''}" alt="Left Side Half-Body">`)
+        .replace(/<img id="wordPhotoRight"[^>]*>/, `<img id="wordPhotoRight" src="${photos.rightSide || ''}" alt="Right Side Half-Body">`)
+        .replace(/<img id="wordPhotoFull"[^>]*>/, `<img id="wordPhotoFull" src="${photos.fullBody || ''}" alt="Front Full-Body">`);
 
       const originalPhotos = rec.session ? rec.session.originalPhotos : {};
-      setImg('wordOriginalPhotoFront', originalPhotos.frontHalf);
-      setImg('wordOriginalPhotoLeft', originalPhotos.leftSide);
-      setImg('wordOriginalPhotoRight', originalPhotos.rightSide);
-      setImg('wordOriginalPhotoFull', originalPhotos.fullBody);
+      htmlContent = htmlContent
+        .replace(/<img id="wordOriginalPhotoFront"[^>]*>/, `<img id="wordOriginalPhotoFront" src="${originalPhotos.frontHalf || ''}" alt="Front Half-Body">`)
+        .replace(/<img id="wordOriginalPhotoLeft"[^>]*>/, `<img id="wordOriginalPhotoLeft" src="${originalPhotos.leftSide || ''}" alt="Left Side Half-Body">`)
+        .replace(/<img id="wordOriginalPhotoRight"[^>]*>/, `<img id="wordOriginalPhotoRight" src="${originalPhotos.rightSide || ''}" alt="Right Side Half-Body">`)
+        .replace(/<img id="wordOriginalPhotoFull"[^>]*>/, `<img id="wordOriginalPhotoFull" src="${originalPhotos.fullBody || ''}" alt="Front Full-Body">`);
 
       try {
-        const converted = htmlDocx.asBlob(htmlContent);
+        const converted = htmlDocx.asBloc(htmlContent);
         const url = URL.createObjectURL(converted);
         const a = document.createElement('a');
         a.href = url;
@@ -620,6 +684,20 @@
           }
         }
       }
+
+      const additionalPhotos = this.getAdditionalPhotos(rec);
+      additionalPhotos.forEach((photo, i) => {
+        try {
+          const blob = this.base64ToBlob(photo.src.replace(/^data:image\/\w+;base64,/, ''), 'image/jpeg');
+          const safeLabel = photo.label.replace(/[^a-z0-9_]/gi, '_').substring(0, 20);
+          blob.name = `MPMPS_${rec.detainee.bookingId || 'record'}_Supplement_${safeLabel}.jpg`;
+          blob.lastModified = Date.now();
+          files.push(blob);
+        } catch (e) {
+          console.error('Failed to convert additional image:', i, e);
+        }
+      });
+
       return files;
     },
 
@@ -728,6 +806,91 @@
       });
 
       this.closeModal('shareModal');
+    },
+
+    openUploadModal: function(index) {
+      this.currentViewIndex = index;
+      document.getElementById('uploadRecordIndex').value = index;
+      document.getElementById('uploadPhotoInput').value = '';
+      document.getElementById('uploadPhotoLabel').value = '';
+      document.getElementById('uploadPreview').innerHTML = '<div class="upload-placeholder">Image preview will appear here</div>';
+      this.openModal('uploadPhotoModal');
+    },
+
+    closeUploadModal: function() {
+      document.getElementById('uploadPhotoInput').value = '';
+      document.getElementById('uploadPhotoLabel').value = '';
+      document.getElementById('uploadPreview').innerHTML = '<div class="upload-placeholder">Image preview will appear here</div>';
+      this.closeModal('uploadPhotoModal');
+    },
+
+    handleFileSelect: function(event) {
+      const file = event.target.files[0];
+      const preview = document.getElementById('uploadPreview');
+      if (!file) {
+        preview.innerHTML = '<div class="upload-placeholder">Image preview will appear here</div>';
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+      };
+      reader.readAsDataURL(file);
+    },
+
+    confirmUpload: function() {
+      const index = parseInt(document.getElementById('uploadRecordIndex').value, 10);
+      if (isNaN(index) || index < 0 || index >= this.records.length) return;
+
+      const fileInput = document.getElementById('uploadPhotoInput');
+      const labelInput = document.getElementById('uploadPhotoLabel');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert('Please select an image to upload.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        const label = labelInput.value.trim() || 'Supplementary Photo';
+
+        if (!this.records[index].session) {
+          this.records[index].session = {};
+        }
+        if (!this.records[index].session.additionalPhotos) {
+          this.records[index].session.additionalPhotos = [];
+        }
+
+        this.records[index].session.additionalPhotos.push({
+          src: dataUrl,
+          label: label,
+          addedAt: new Date().toISOString()
+        });
+
+        this.persist();
+        this.closeUploadModal();
+        this.viewRecord(index);
+      };
+      reader.readAsDataURL(file);
+    },
+
+    deleteAdditionalPhoto: function(recordIndex, photoIndex) {
+      if (!this.records[recordIndex] || !this.records[recordIndex].session || !this.records[recordIndex].session.additionalPhotos) return;
+      this.records[recordIndex].session.additionalPhotos.splice(photoIndex, 1);
+      this.persist();
+      this.viewRecord(recordIndex);
+    },
+
+    getAdditionalPhotos: function(rec) {
+      return rec.session && rec.session.additionalPhotos ? rec.session.additionalPhotos : [];
     }
   };
 
