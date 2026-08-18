@@ -10,7 +10,7 @@
   // ==========================================
   const App = {
     state: {
-      currentScreen: 'login',
+      currentScreen: 'registration',
       officer: null,
       detainee: null,
       session: {
@@ -90,7 +90,10 @@
     bindEvents: function() {
       // Registration
       document.getElementById('btnStartCapture').addEventListener('click', () => this.handleStartCapture());
-      document.getElementById('btnBackToLogin').addEventListener('click', () => window.location.href = 'login.html');
+      document.getElementById('btnBackToLogin').addEventListener('click', () => {
+        localStorage.removeItem('mpmps_current_officer');
+        window.location.href = 'login.html';
+      });
 
       // Camera
       document.getElementById('btnCapture').addEventListener('click', () => {
